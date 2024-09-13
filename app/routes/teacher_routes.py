@@ -1,0 +1,1 @@
+from app.controllers.teacher_controller import Blueprint

@@ -1,0 +1,128 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Flask environment variables
+instance/
+.env
+*.env
+*.env.*
+
+# Database files
+*.sqlite3
+*.db
+*.sql
+
+# Logs
+*.log
+logs/
+*.pid
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# PyInstaller
+#  Usually these files are written by a python script from a template
+#  before PyInstaller builds the exe, so as to inject date/other infos into it.
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Distribution files
+dist/
+build/
+*.egg-info/
+.eggs/
+wheelhouse/
+*.whl
+
+# PyCharm
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Static Files
+staticfiles/
+
+# Cache files
+*.cache
+*.mypy_cache/
+*.pytest_cache/
+.cache/
+
+# Ignore files related to MySQL dumps
+*.sql
+*.sql.gz
+
+# Ignore Excel files
+*.xlsx
+
+# Ignore compiled libraries
+*.dll
+*.dylib
+*.jar
+*.war
+
+# Ignore temporary files
+*.tmp
+*.temp
+
+# Ignore specific directories/files
+app/resources/archivos.xlsx
+
+# Ignore virtual environments
+env/
+venv/
+
+# Ignore compiled wheel files
+*.whl
+
+# Ignore backup files
+*.bak
+*.swp
+*.swo
+
+# Ignore Flask secrets (if you ever need to store secrets in a separate file)
+secrets.json
+
+# Ignore Flask specific files
+instance/
+
+# Ignore IDE-specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Ignore macOS-specific files
+.DS_Store
+
+# Ignore Windows-specific files
+Thumbs.db

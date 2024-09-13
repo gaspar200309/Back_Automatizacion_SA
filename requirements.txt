@@ -1,0 +1,12 @@
+requests
+beautifulsoup4
+selenium
+pymysql
+webdriver-manager
+pandas
+flask
+Flask-Migrate
+Flask-SQLAlchemy
+Flask-JWT-Extended
+openpyxl
+werkzeug
