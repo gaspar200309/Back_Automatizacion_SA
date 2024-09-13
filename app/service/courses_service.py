@@ -15,5 +15,3 @@ def get_all_courses():
         db.session.rollback()  
         print(f"Error: {e}")
         return []
-
-git remote remove https://github.com/gaspar200309/C-San-Agustin-Automatizacion.git

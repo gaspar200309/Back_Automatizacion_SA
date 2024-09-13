@@ -10,6 +10,7 @@ __pycache__/
 .Python
 env/
 venv/
+migrations/
 ENV/
 env.bak/
 venv.bak/

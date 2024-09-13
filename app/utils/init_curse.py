@@ -15,9 +15,7 @@ def init_courses(app):
                 nivel = Nivel(name=course_data['nivel'])
                 db.session.add(nivel)
                 db.session.commit()  # Guardar el nuevo nivel en la base de datos
-                print(f"Nivel creado: {nivel.name}")
-            else:
-                print(f"Nivel encontrado: {nivel.name}")  # Verificar si se encuentran niveles
+            
 
             # Buscar o crear el curso si no existe
             course = Course.query.filter_by(name=course_data['name'], nivel=nivel).first()
@@ -30,9 +28,7 @@ def init_courses(app):
                     nivel=nivel
                 )
                 db.session.add(new_course)
-                print(f"Curso agregado: {new_course.name}")
-            else:
-                print(f"Curso ya existente: {course.name}")
+           
 
         db.session.commit()
         print("Registro de cursos completado")
