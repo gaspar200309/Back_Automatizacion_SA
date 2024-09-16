@@ -36,12 +36,14 @@ def create_app():
         from app.controllers.user_controller import user_bp
         from app.controllers.courses_controller import courses_bp
         from app.controllers.obj_controller import objective_bp
+        from app.controllers.indicator_controller import indicator_bp
         
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(teacher_bp, url_prefix='/api')
         app.register_blueprint(user_bp, url_prefix='/api')
         app.register_blueprint(courses_bp, url_prefix = '/api')
         app.register_blueprint(objective_bp, url_prefix = '/api')
+        app.register_blueprint(indicator_bp, url_prefix = '/api')
                 
         db.create_all()
         init_roles(app)
