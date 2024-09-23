@@ -49,7 +49,8 @@ def get_indicators():
 def assign_coordinator(indicator_id):
     try:
         data = request.json
-        user_id = data.get('user_id')
+        print(f"Datos recibidos en POST /indicators/{indicator_id}/assign-coordinator:", data)
+        user_id = data.get('userId')
 
         if not user_id:
             return jsonify({'error': 'user_id es obligatorio'}), 400
@@ -63,7 +64,8 @@ def assign_coordinator(indicator_id):
 def remove_coordinator(indicator_id):
     try:
         data = request.json
-        user_id = data.get('user_id')
+        print(f"Datos recibidos en DELETE /indicators/{indicator_id}/remove-coordinator:", data)
+        user_id = data.get('userId')
 
         if not user_id:
             return jsonify({'error': 'user_id es obligatorio'}), 400
@@ -72,4 +74,25 @@ def remove_coordinator(indicator_id):
         return jsonify(result), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
 
+@indicator_bp.route('/indicators/simple', methods=['GET'])
+def get_indicators_with_coordinators():
+    try:
+        indicators = get_all_indicators()
+        result = []
+        for indicator in indicators:
+            coordinators = [{
+                'id': user.id,
+                'username': user.username,
+                'name': user.name
+            } for user in indicator.users]  
+
+            result.append({
+                'id': indicator.id,
+                'name': indicator.name,
+                'coordinators': coordinators
+            })
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
