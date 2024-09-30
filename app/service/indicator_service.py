@@ -1,4 +1,5 @@
 from app.models.Indicadores import Indicator
+from sqlalchemy import func
 from app.models.user import User
 from app import db
 
@@ -60,3 +61,43 @@ def remove_coordinator_from_indicator(indicator_id, user_id):
     except Exception as e:
         db.session.rollback()
         raise Exception(f"Error al desasignar coordinador: {str(e)}")
+
+
+def count_indicators():
+    total = db.session.query(func.count(Indicator.id)).scalar()
+    completed = db.session.query(func.count(Indicator.id)).filter(Indicator.is_completed == True).scalar()
+    incomplete = total - completed
+
+    return {
+        'total': total,
+        'completed': completed,
+        'incomplete': incomplete,
+    }
+    
+def get_indicators_by_username(username):
+    try:
+        user = db.session.query(User).filter_by(username=username).first()
+
+        if not user:
+            raise Exception("Usuario no encontrado")
+
+        indicators = user.indicators 
+
+        result = []
+        for indicator in indicators:
+            result.append({
+                'id': indicator.id,
+                'name': indicator.name,
+                'delivery_deadline': str(indicator.delivery_deadline),
+                'due_date': str(indicator.due_date),
+                'improvement_action': indicator.improvement_action,
+                'expected_result': indicator.expected_result,
+                'is_completed': indicator.is_completed,
+                'academic_objective': indicator.academic_objective.name if indicator.academic_objective else None,
+                'sgc_objective': indicator.sgc_objective.name if indicator.sgc_objective else None,
+                'formula': indicator.formula.formula if indicator.formula else None
+            })
+
+        return result
+    except Exception as e:
+        raise Exception(f"Error retrieving indicators for user: {str(e)}")

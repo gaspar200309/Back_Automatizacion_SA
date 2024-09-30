@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.teacher_service import register_teacher, assign_teacher_to_coordinator, get_all_teachers
+from app.service.teacher_service import register_teacher, assign_teacher_to_coordinator, get_all_teachers, get_teacher_by_id, update_teacher, delete_teacher
 
 teacher_bp = Blueprint('teacher_bp', __name__)
 
@@ -55,3 +55,58 @@ def list_teachers():
         return jsonify(teachers), 200
     except Exception as e:
         return jsonify({'error': 'Ocurrió un error al obtener los profesores'}), 500
+    
+#Get teacher for id a controller
+@teacher_bp.route('/teachers/<int:teacher_id>', methods = ['GET'])
+def get_teacherb(teacher_id):
+    try:
+        teacher = get_teacher_by_id(teacher_id)
+        
+        return jsonify(teacher), 200
+    except Exception as e:
+        return jsonify({'error': 'Ocurrió un error al obtener el profesor'}), 500
+    
+
+# ... (otras rutas existentes)
+
+@teacher_bp.route('/teachers/<int:teacher_id>', methods=['PUT'])
+def update_teacher_route(teacher_id):
+    data = request.get_json()
+    
+    name = data.get('firstName')
+    last_name = data.get('lastName')
+    asignatura = data.get('subjects')
+    course_id = data.get('course')
+
+    if not name or not last_name or not asignatura or not course_id:
+        return jsonify({'error': 'Faltan datos necesarios para actualizar el profesor'}), 400
+    
+    try:
+        updated_teacher = update_teacher(teacher_id, name, last_name, asignatura, course_id)
+        return jsonify({
+            'message': 'Profesor actualizado exitosamente',
+            'teacher': {
+                'id': updated_teacher.id,
+                'name': updated_teacher.name,
+                'last_name': updated_teacher.last_name,
+                'asignatura': updated_teacher.asignatura,
+                'course_id': course_id
+            }
+        }), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': 'Ocurrió un error al actualizar el profesor'}), 500
+
+@teacher_bp.route('/teachers/<int:teacher_id>', methods=['DELETE'])
+def delete_teacher_route(teacher_id):
+    try:
+        delete_teacher(teacher_id)
+        return jsonify({'message': 'Profesor eliminado exitosamente'}), 200
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 404
+    except Exception as e:
+        return jsonify({'error': 'Ocurrió un error al eliminar el profesor'}), 500
+
+    
+ 

@@ -1,9 +1,11 @@
 from flask import Blueprint, request, jsonify
-from app.service.indicator_service import create_indicator, get_all_indicators, assign_coordinator_to_indicator, remove_coordinator_from_indicator
+from app.service.indicator_service import create_indicator, get_all_indicators, assign_coordinator_to_indicator, remove_coordinator_from_indicator, count_indicators, get_indicators_by_username
+from app.middleware.middleware import role_required, jwt_required
 
 indicator_bp = Blueprint('indicators', __name__)
 
 @indicator_bp.route('/indicators', methods=['POST'])
+@role_required(['Administrador' ])
 def create_indicato():
     try:
         data = request.json
@@ -25,6 +27,8 @@ def create_indicato():
         return jsonify({'error': str(e)}), 400
     
 @indicator_bp.route('/indicators', methods=['GET'])
+@jwt_required()  
+@role_required(['Administrador', 'director'])
 def get_indicators():
     try:
         indicators = get_all_indicators()
@@ -94,5 +98,22 @@ def get_indicators_with_coordinators():
                 'coordinators': coordinators
             })
         return jsonify(result), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@indicator_bp.route('/indicators/count', methods=['GET'])
+def get_indicator_counts():
+    try:
+        counts = count_indicators()
+        return jsonify(counts), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    
+@indicator_bp.route('/indicators/user/<string:username>', methods=['GET'])
+def get_indicators_by_user(username):
+    try:
+        indicators = get_indicators_by_username(username)
+        return jsonify(indicators), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500

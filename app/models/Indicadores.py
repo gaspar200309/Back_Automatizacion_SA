@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean
 from sqlalchemy.orm import relationship
 from app.models.user import user_indicator
 from .. import db
@@ -19,6 +19,7 @@ class Indicator(db.Model):
     due_date = Column(Date, nullable=False)  #Fecha de vencimiento¿
     improvement_action = Column(String(250)) # Mejora accion
     expected_result = Column(String(50), nullable=False) # resultado esperado
+    is_completed = Column(Boolean, default=False)
     academic_objective_id = Column(Integer, ForeignKey('academic_objectives.id'))
     sgc_objective_id = Column(Integer, ForeignKey('sgc_objectives.id'))
     evaluations = relationship('Evaluation', back_populates='indicator')
@@ -28,9 +29,8 @@ class Indicator(db.Model):
     sgc_objective = relationship('SGCObjective', back_populates='indicators')
     formula_id = db.Column(db.Integer, db.ForeignKey('formulas.id'))
     formula = db.relationship('Formula', back_populates='indicators')
+    documents = relationship('Document', back_populates='indicator')
     
-
-
 
 class IndicatorState(db.Model):
     __tablename__ = 'indicator_states'

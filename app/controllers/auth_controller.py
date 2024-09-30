@@ -1,5 +1,7 @@
 from flask import Blueprint, request, jsonify
 from app.service.auth_service import create_user, authenticate_user
+from flask_jwt_extended import create_access_token, set_access_cookies
+
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -22,17 +24,29 @@ def register():
     except Exception as e:
         print(f"Error in register route: {str(e)}")
         return jsonify({"error": "An unexpected error occurred"}), 500
-
-
+    
 @auth_bp.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
-    print(data)
-    identifier = data.get('identifier')  
+    data = request.json
+    identifier = data.get('identifier')
     password = data.get('password')
 
-    auth_response, message = authenticate_user(identifier, password)
-    if auth_response:
-        return jsonify(auth_response), 200
-    return jsonify({"error": message}), 401
+    user, message = authenticate_user(identifier, password)
+
+    if user and hasattr(user, 'id') and user.roles and hasattr(user.roles[0].role, 'name'):
+        role_name = user.roles[0].role.name
+        access_token = create_access_token(identity=user.id, additional_claims={"role": role_name})
+        # photo_url = user.photo_url if hasattr(user, 'photo_url') else None
+        
+        return jsonify({
+            "access_token": access_token,
+            "username": user.username,
+            "roles": role_name,
+            # "photo": photo_url  # Descomentar cuando la propiedad 'photo_url' esté disponible
+            "message": "Login successful"
+        }), 200
+    
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
 
