@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime
-from .models import db, Document
-from .services import DocumentService
+from app.models.peridos import db, Document
+from app.service.document_service import DocumentService
 
 documents_bp = Blueprint('documents', __name__)
 
@@ -11,10 +11,9 @@ def create_document():
     name = data.get('name')
     delivered = data.get('delivered')
     indicator_id = data.get('indicator_id')
-    period_id = data.get('period_id')
 
-    new_document = DocumentService.add_document(name, delivered, indicator_id, period_id)
-    return jsonify({'message': 'Documento creado exitosamente', 'document': new_document.serialize()}), 201
+    new_document = DocumentService.add_document(name, delivered, indicator_id)
+    return jsonify({'message': 'Documento creado exitosamente'}), 201
 
 @documents_bp.route('/documents/counts', methods=['GET'])
 def get_counts():
@@ -24,4 +23,16 @@ def get_counts():
 @documents_bp.route('/documents/delivered', methods=['GET'])
 def get_delivered_documents():
     documents = DocumentService.list_delivered_documents()
-    return jsonify([doc.serialize() for doc in documents]), 200
+    
+    documents_list = []
+    for doc in documents:
+        documents_list.append({
+            'id': doc.id,
+            'name': doc.name,
+            'delivered': doc.delivered,
+            'upload_date': doc.upload_date.strftime('%Y-%m-%d'),  
+            'indicator_id': doc.indicator_id
+        })
+    
+    return jsonify(documents_list), 200
+

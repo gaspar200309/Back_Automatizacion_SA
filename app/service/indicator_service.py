@@ -1,6 +1,6 @@
-from app.models.Indicadores import Indicator
+from app.models.Indicadores import Indicator, Evaluation, IndicatorState
 from sqlalchemy import func
-from app.models.user import User
+from app.models.user import User, Teacher
 from app import db
 
 def create_indicator(data):
@@ -101,3 +101,54 @@ def get_indicators_by_username(username):
         return result
     except Exception as e:
         raise Exception(f"Error retrieving indicators for user: {str(e)}")
+    
+def get_indicator_assignments():
+    """Obtiene todos los indicadores con sus usuarios asignados"""
+    try:
+        indicators = db.session.query(Indicator).all()
+        return [{
+            'id': indicator.id,
+            'name': indicator.name,
+            'coordinators': [{
+                'id': user.id,
+                'username': user.username
+            } for user in indicator.users]
+        } for indicator in indicators]
+    except Exception as e:
+        raise Exception(f"Error retrieving indicator assignments: {str(e)}")
+
+
+def register_compliance(indicator_id, teacher_name, state_name):
+    try:
+        # Obtener el indicador
+        indicator = Indicator.query.get(indicator_id)
+        if not indicator:
+            raise Exception("Indicador no encontrado")
+
+        # Obtener el profesor
+        name, last_name = teacher_name.split(' ', 1)
+        teacher = Teacher.query.filter_by(name=name, last_name=last_name).first()
+        if not teacher:
+            raise Exception("Profesor no encontrado")
+
+        # Obtener el estado
+        state = IndicatorState.query.filter_by(name=state_name).first()
+        if not state:
+            raise Exception("Estado no encontrado")
+
+        # Crear o actualizar el cumplimiento
+        compliance = Evaluation.query.filter_by(indicator_id=indicator.id, teacher_id=teacher.id).first()
+        if compliance:
+            compliance.state_id = state.id 
+        else:
+            compliance = Evaluation(indicator_id=indicator.id, teacher_id=teacher.id, state_id=state.id)
+            db.session.add(compliance)
+
+        db.session.commit()
+        return compliance
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+def get_compliance(indicator_id):
+    return Evaluation.query.filter_by(indicator_id=indicator_id).all()

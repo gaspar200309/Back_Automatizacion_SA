@@ -63,6 +63,7 @@ class Teacher(db.Model):
     last_name = Column(String(50), nullable=False)
     asignatura = Column(String(50), nullable=False)
     assignments = relationship('CoordinatorTeacherAssignment', back_populates='teacher')
+    evaluations = relationship('Evaluation', back_populates='teacher')
     courses = relationship('Course', secondary=teacher_course, back_populates='teachers') 
 
 

@@ -13,8 +13,7 @@ class Period(db.Model):
     name = Column(String(50), nullable=False)  
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
-
-    documents = relationship('Document', back_populates='period')
+    indicators = relationship('Indicator', back_populates='period')
 
 
 class Document(db.Model):
@@ -27,4 +26,3 @@ class Document(db.Model):
     period_id = Column(Integer, ForeignKey('periods.id')) 
 
     indicator = relationship('Indicator', back_populates='documents')
-    period = relationship('Period', back_populates='documents')

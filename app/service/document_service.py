@@ -1,14 +1,14 @@
-from app.models import db, Document
+from datetime import datetime  
+from app.models.peridos import db, Document
 
 class DocumentService:
     @staticmethod
-    def add_document(name, delivered, indicator_id, period_id):
+    def add_document(name, delivered, indicator_id):
         new_document = Document(
             name=name,
             delivered=delivered,
             upload_date=datetime.utcnow(),
             indicator_id=indicator_id,
-            period_id=period_id
         )
         db.session.add(new_document)
         db.session.commit()
@@ -23,4 +23,4 @@ class DocumentService:
 
     @staticmethod
     def list_delivered_documents():
-        return Document.query.filter_by(delivered=True).all()
+        return Document.query.all()

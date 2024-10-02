@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.indicator_service import create_indicator, get_all_indicators, assign_coordinator_to_indicator, remove_coordinator_from_indicator, count_indicators, get_indicators_by_username
+from app.service.indicator_service import create_indicator, get_all_indicators, assign_coordinator_to_indicator, remove_coordinator_from_indicator, count_indicators, get_indicators_by_username, get_indicator_assignments
 from app.middleware.middleware import role_required, jwt_required
 
 indicator_bp = Blueprint('indicators', __name__)
@@ -108,7 +108,7 @@ def get_indicator_counts():
         return jsonify(counts), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+  
     
 @indicator_bp.route('/indicators/user/<string:username>', methods=['GET'])
 def get_indicators_by_user(username):
@@ -117,3 +117,13 @@ def get_indicators_by_user(username):
         return jsonify(indicators), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@indicator_bp.route('/indicators/assignments', methods=['GET'])
+def get_all_assignments():
+    """Endpoint para obtener todas las asignaciones de indicadores"""
+    try:
+        assignments = get_indicator_assignments()
+        return jsonify(assignments), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
