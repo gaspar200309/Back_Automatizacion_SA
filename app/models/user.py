@@ -17,6 +17,7 @@ class User(db.Model):
     name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
+    photo = Column(String(255), nullable=True) 
     password_hash = Column(String(512), nullable=False)
     roles = relationship('UserRole', back_populates='user')
     coordinator_assignments = relationship('CoordinatorTeacherAssignment', back_populates='coordinator')
@@ -62,6 +63,7 @@ class Teacher(db.Model):
     last_name = Column(String(50), nullable=False)
     asignatura = Column(String(50), nullable=False)
     assignments = relationship('CoordinatorTeacherAssignment', back_populates='teacher')
+    evaluations = relationship('Evaluation', back_populates='teacher')
     courses = relationship('Course', secondary=teacher_course, back_populates='teachers') 
 
 

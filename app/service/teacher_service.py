@@ -49,5 +49,51 @@ def get_all_teachers():
             } for course in teacher.courses]  # Obtener todos los cursos asociados al profesor
         }
         teacher_list.append(teacher_data)
-    
     return teacher_list
+
+def get_teacher_by_id(teacher_id):
+    teacher = Teacher.query.get(teacher_id)
+    if not teacher:
+        return None
+    
+    teacher_data = {
+        'id': teacher.id,
+        'name': teacher.name,
+        'last_name': teacher.last_name,
+        'asignatura': teacher.asignatura,
+        'courses': [{
+            'course_id': course.id,
+            'course_name': course.name,
+            'nivel': course.nivel.name  
+        } for course in teacher.courses] 
+    }
+    
+    return teacher_data
+    
+
+def update_teacher(teacher_id, name, last_name, asignatura, course_id):
+    teacher = Teacher.query.get(teacher_id)
+    if not teacher:
+        raise ValueError("Profesor no encontrado")
+    
+    teacher.name = name
+    teacher.last_name = last_name
+    teacher.asignatura = asignatura
+    
+    # Actualizar el curso
+    teacher.courses = []  # Limpiar cursos existentes
+    course = Course.query.get(course_id)
+    if not course:
+        raise ValueError("Curso no encontrado")
+    teacher.courses.append(course)
+    
+    db.session.commit()
+    return teacher
+
+def delete_teacher(teacher_id):
+    teacher = Teacher.query.get(teacher_id)
+    if not teacher:
+        raise ValueError("Profesor no encontrado")
+    
+    db.session.delete(teacher)
+    db.session.commit()

@@ -13,7 +13,8 @@ def get_users():
             'last_name': user.last_name,
             'username': user.username,
             'email': user.email,
-            'roles': [role.role.name for role in user.roles]  
+            'roles': [role.role.name for role in user.roles],
+            'photo': user.photo
         } for user in users
     ])
 
@@ -38,28 +39,32 @@ def get_user(user_id):
             'name': user.name, 
             'last_name': user.last_name, 
             'username': user.username, 
-            'email': user.email
+            'email': user.email,
+            'photo': user.photo
         })
     return jsonify({'error': 'User not found'}), 404
 
 @user_bp.route('/users', methods=['POST'])
 def create_user():
-    data = request.json
-    print(data)
+    data = request.json 
+    photo_file = request.files.get('photo')
+    
     new_user = UserService.create_user(
         username=data['username'], 
         name=data['firstName'],  
         last_name=data['lastName'],
         email=data['email'], 
         password=data['password'], 
-        role_ids=data['role_ids']
+        role_ids=data['role_ids'],
+        photo_file=photo_file  
     )
     return jsonify({
         'id': new_user.id, 
         'name': new_user.name, 
         'last_name': new_user.last_name, 
         'username': new_user.username, 
-        'email': new_user.email
+        'email': new_user.email,
+        'photo': new_user.photo 
     }), 201
 
 
@@ -91,3 +96,9 @@ def delete_user(user_id):
     if success:
         return jsonify({'message': 'User deleted successfully'})
     return jsonify({'error': 'User not found'}), 404
+
+@user_bp.route('/users/count', methods=['GET'])
+def count_users():
+    user_count = UserService.get_user_count()
+    return jsonify({'total_users': user_count})
+
