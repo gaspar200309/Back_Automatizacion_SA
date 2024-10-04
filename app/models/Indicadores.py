@@ -22,7 +22,7 @@ class Indicator(db.Model):
     is_completed = Column(Boolean, default=False)
     academic_objective_id = Column(Integer, ForeignKey('academic_objectives.id'))
     sgc_objective_id = Column(Integer, ForeignKey('sgc_objectives.id'))
-    evaluations = relationship('Evaluation', back_populates='indicator')
+    evaluations = relationship('Evaluation', back_populates='indicator', cascade='all, delete-orphan')
     users = relationship('User', secondary=user_indicator, back_populates='indicators')
     period_id = Column(Integer, ForeignKey('periods.id')) 
 
@@ -43,14 +43,16 @@ class Evaluation(db.Model):
     __tablename__ = 'evaluations'
     id = Column(Integer, primary_key=True)
     indicator_id = Column(Integer, ForeignKey('indicators.id'))
-    teacher_id = Column(Integer, ForeignKey('teacher.id'))  
-    state_id = Column(Integer, ForeignKey('indicator_states.id'))
+    teacher_id = Column(Integer, ForeignKey('teacher.id'), nullable = True)  
+    state_id = Column(Integer, ForeignKey('indicator_states.id'), nullable = True)
+    period_id = Column(Integer, ForeignKey('periods.id'), nullable=True) 
+    trimestre_id = Column(Integer, ForeignKey('trimesters.id'), nullable  = True)
+    course_id = Column(Integer, ForeignKey('courses.id'), nullable=True) 
+    parallel = Column(String(10), nullable=True)      
+    
     indicator = relationship('Indicator', back_populates='evaluations')
     teacher = relationship('Teacher') 
     state = relationship('IndicatorState')  
-    
-
-
-
-    
-
+    period = relationship('Period')  
+    trimestre = relationship('Trimester') 
+    course = relationship('Course')  

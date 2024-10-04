@@ -5,7 +5,11 @@ from .. import db
 class Trimester(db.Model):
     __tablename__ = 'trimesters'
     id = Column(Integer, primary_key=True)
+    start_date = Column(Date, nullable=False)
+    end_date = Column(Date, nullable=False)
     name = Column(String(50), unique=True, nullable=False)
+    
+    periods = relationship('Period', back_populates='trimester')
 
 class Period(db.Model):
     __tablename__ = 'periods'
@@ -13,7 +17,12 @@ class Period(db.Model):
     name = Column(String(50), nullable=False)  
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    
+    trimester_id = Column(Integer, ForeignKey('trimesters.id')) 
+    trimester = relationship('Trimester', back_populates='periods')
+    
     indicators = relationship('Indicator', back_populates='period')
+
 
 
 class Document(db.Model):
