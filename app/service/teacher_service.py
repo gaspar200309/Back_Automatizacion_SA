@@ -2,7 +2,7 @@ from app import db
 from app.models.coures import Course
 from app.models.user import Teacher, User, CoordinatorTeacherAssignment
 
-def register_teacher(name, last_name, asignatura, course_id):
+def register_teacher(name, last_name, asignatura, course_ids):
     # Crear un nuevo profesor
     new_teacher = Teacher(
         name=name,
@@ -10,17 +10,17 @@ def register_teacher(name, last_name, asignatura, course_id):
         asignatura=asignatura
     )
     
-    course = db.session.query(Course).filter_by(id=course_id).first()
-    
-    if course is None:
-        raise ValueError("El curso proporcionado no existe")
-
-    new_teacher.courses.append(course)
+    for course_id in course_ids:
+        course = db.session.query(Course).filter_by(id=course_id).first()
+        if course is None:
+            raise ValueError(f"El curso con id {course_id} no existe")
+        new_teacher.courses.append(course)
     
     db.session.add(new_teacher)
     db.session.commit()
 
     return new_teacher
+
 
 def assign_teacher_to_coordinator(teacher_id, coordinator_id):
     teacher = Teacher.query.get(teacher_id)
@@ -71,7 +71,7 @@ def get_teacher_by_id(teacher_id):
     return teacher_data
     
 
-def update_teacher(teacher_id, name, last_name, asignatura, course_id):
+def update_teacher(teacher_id, name, last_name, asignatura, course_ids):
     teacher = Teacher.query.get(teacher_id)
     if not teacher:
         raise ValueError("Profesor no encontrado")
@@ -80,15 +80,24 @@ def update_teacher(teacher_id, name, last_name, asignatura, course_id):
     teacher.last_name = last_name
     teacher.asignatura = asignatura
     
-    # Actualizar el curso
-    teacher.courses = []  # Limpiar cursos existentes
-    course = Course.query.get(course_id)
-    if not course:
-        raise ValueError("Curso no encontrado")
-    teacher.courses.append(course)
+    if not isinstance(course_ids, list):
+        course_ids = [course_ids]
     
-    db.session.commit()
+    teacher.courses = []  
+    for course_id in course_ids:
+        course = Course.query.get(course_id)
+        if not course:
+            raise ValueError(f"Curso con ID {course_id} no encontrado")
+        teacher.courses.append(course)
+    
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        raise Exception(f"Error al actualizar profesor: {str(e)}")
+    
     return teacher
+
 
 def delete_teacher(teacher_id):
     teacher = Teacher.query.get(teacher_id)

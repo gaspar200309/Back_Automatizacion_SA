@@ -17,11 +17,14 @@ class User(db.Model):
     name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     email = Column(String(120), unique=True, nullable=False)
-    photo = Column(String(255), nullable=True) 
+    phone = db.Column(db.String(20))  
+    photo = Column(String(255), nullable=True)  
     password_hash = Column(String(512), nullable=False)
+    
     roles = relationship('UserRole', back_populates='user')
     coordinator_assignments = relationship('CoordinatorTeacherAssignment', back_populates='coordinator')
     indicators = relationship('Indicator', secondary=user_indicator, back_populates='users')
+    reports = relationship('Report', back_populates='user')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -30,10 +33,21 @@ class User(db.Model):
         return check_password_hash(self.password_hash, password)
 
 
+
+
 role_permission = Table('role_permission', db.Model.metadata,
     Column('role_id', Integer, ForeignKey('roles.id', ondelete='CASCADE'), primary_key=True),
     Column('permission_id', Integer, ForeignKey('permissions.id', ondelete='CASCADE'), primary_key=True)
 )
+
+class UserRole(db.Model):
+    __tablename__ = 'user_roles'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'))
+    role_id = Column(Integer, ForeignKey('roles.id', ondelete='CASCADE'))
+    user = relationship('User', back_populates='roles')
+    role = relationship('Role', back_populates='users')
+
 
 class Role(db.Model):
     __tablename__ = 'roles'
@@ -48,13 +62,6 @@ class Permission(db.Model):
     name = Column(String(50), unique=True, nullable=False)
     roles = relationship('Role', secondary=role_permission, back_populates='permissions')
 
-class UserRole(db.Model):
-    __tablename__ = 'user_roles'
-    id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'))
-    role_id = Column(Integer, ForeignKey('roles.id', ondelete='CASCADE'))
-    user = relationship('User', back_populates='roles')
-    role = relationship('Role', back_populates='users')
 
 class Teacher(db.Model):
     __tablename__ = 'teacher'
@@ -62,9 +69,12 @@ class Teacher(db.Model):
     name = Column(String(50), nullable=False)
     last_name = Column(String(50), nullable=False)
     asignatura = Column(String(50), nullable=False)
+    
     assignments = relationship('CoordinatorTeacherAssignment', back_populates='teacher')
     evaluations = relationship('Evaluation', back_populates='teacher')
-    courses = relationship('Course', secondary=teacher_course, back_populates='teachers') 
+    reports = relationship('Report', back_populates='teacher')
+    courses = relationship('Course', secondary=teacher_course, back_populates='teachers')
+
 
 
 class CoordinatorTeacherAssignment(db.Model):

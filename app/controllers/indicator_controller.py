@@ -120,7 +120,6 @@ def get_indicators_by_user(username):
     
 @indicator_bp.route('/indicators/assignments', methods=['GET'])
 def get_all_assignments():
-    """Endpoint para obtener todas las asignaciones de indicadores"""
     try:
         assignments = get_indicator_assignments()
         return jsonify(assignments), 200
