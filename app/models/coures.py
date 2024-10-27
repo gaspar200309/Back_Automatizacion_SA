@@ -22,6 +22,5 @@ class Course(db.Model):
     name_paralelo = Column(String(50), nullable = False)
     nivel_id = Column(Integer, ForeignKey('niveles.id'), nullable=False)
     nivel = relationship('Nivel', back_populates='courses')
-    teachers = relationship('Teacher', secondary=teacher_course, back_populates='courses')  
-
-
+    reports = relationship('Report', back_populates='course')
+    teachers = relationship('Teacher', secondary=teacher_course, back_populates='courses')

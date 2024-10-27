@@ -10,6 +10,7 @@ class Trimester(db.Model):
     name = Column(String(50), unique=True, nullable=False)
     
     periods = relationship('Period', back_populates='trimester')
+    reports = relationship('Report', back_populates='trimestre')  # Añadir esta relación
 
 class Period(db.Model):
     __tablename__ = 'periods'
@@ -21,8 +22,9 @@ class Period(db.Model):
     trimester_id = Column(Integer, ForeignKey('trimesters.id')) 
     trimester = relationship('Trimester', back_populates='periods')
     
+    # Cambié 'Registroota' por 'RegistroNota'
     indicators = relationship('Indicator', back_populates='period')
-
+ 
 
 
 class Document(db.Model):

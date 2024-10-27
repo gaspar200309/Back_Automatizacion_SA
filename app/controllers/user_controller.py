@@ -14,7 +14,8 @@ def get_users():
             'username': user.username,
             'email': user.email,
             'roles': [role.role.name for role in user.roles],
-            'photo': user.photo
+            'photo': user.photo,
+            'phone' : user.phone
         } for user in users
     ])
 
@@ -31,54 +32,28 @@ def get_roles():
 
 
 @user_bp.route('/users/<int:user_id>', methods=['GET'])
-def get_user(user_id):
-    user = UserService.get_user_by_id(user_id)
-    if user:
-        return jsonify({
-            'id': user.id, 
-            'name': user.name, 
-            'last_name': user.last_name, 
-            'username': user.username, 
-            'email': user.email,
-            'photo': user.photo
-        })
+def get_user_by_id(user_id):
+    user_data = UserService.get_user_by_id(user_id)
+    if user_data:
+        return jsonify(user_data)
     return jsonify({'error': 'User not found'}), 404
-
-@user_bp.route('/users', methods=['POST'])
-def create_user():
-    data = request.json 
-    photo_file = request.files.get('photo')
-    
-    new_user = UserService.create_user(
-        username=data['username'], 
-        name=data['firstName'],  
-        last_name=data['lastName'],
-        email=data['email'], 
-        password=data['password'], 
-        role_ids=data['role_ids'],
-        photo_file=photo_file  
-    )
-    return jsonify({
-        'id': new_user.id, 
-        'name': new_user.name, 
-        'last_name': new_user.last_name, 
-        'username': new_user.username, 
-        'email': new_user.email,
-        'photo': new_user.photo 
-    }), 201
 
 
 
 @user_bp.route('/users/<int:user_id>', methods=['PUT'])
 def update_user(user_id):
-    data = request.json
+    data = request.form
+    photo = request.files.get('photo') 
+
     updated_user = UserService.update_user(
         user_id, 
         data['username'], 
         data['name'], 
         data['last_name'], 
         data['email'], 
-        data['role']
+        data.getlist('role'),  
+        data['phone'],
+        photo
     )
     if updated_user:
         return jsonify({
@@ -86,7 +61,9 @@ def update_user(user_id):
             'name': updated_user.name, 
             'last_name': updated_user.last_name, 
             'username': updated_user.username, 
-            'email': updated_user.email
+            'email': updated_user.email,
+            'photo': updated_user.photo,
+            'phone': updated_user.phone
         })
     return jsonify({'error': 'User not found'}), 404
 
