@@ -1,5 +1,6 @@
 from app import db
 from app.models.Indicadores import StudentStatus, Report, IndicatorState, Evaluation
+from ..models.user import User, Teacher
 from app.models.coures import Course
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import func
@@ -150,8 +151,6 @@ class StudentStatusService:
         db.session.commit()
         return {"message": "Incidencia registrada con éxito."}
 
-
-
     @staticmethod
     def get_incidences_statistics(course_id=None, trimester_id=None, semester_id=None):
         TOTAL_ESTUDIANTES_STATIC = 1060
@@ -226,38 +225,40 @@ class StudentStatusService:
 
         return statistics
 
-        
     @staticmethod
     def register_nota_status(data):
         try:
-            registros = []
-            for registro in data.get('registros', []):
-                if registro.get('indicator_id') == 14:  # Only process if indicator_id is 14
-                    nuevo_registro = Evaluation(
-                        indicator_id=registro.get('indicator_id'),
-                        trimestre_id=registro.get('trimestre_id'),
-                        course_id=registro.get('course_id'),
-                        period_id=registro.get('period_id'),
-                        teacher_id=registro.get('teacher_id'),
-                        state_id=registro.get('state_id')  # Este es el ID del estado desde IndicatorState
-                    )
-                    registros.append(nuevo_registro)
-                    db.session.add(nuevo_registro)
+            if data.get('indicator_id') != 14:
+                return {"error": "Solo se permite el registro para indicator_id 14"}, 400
 
+            nuevo_registro = Evaluation(
+                indicator_id=data.get('indicator_id'),
+                course_id=data.get('course_id'),
+                period_id=data.get('period_id'),
+                teacher_id=data.get('teacher_id'),
+                trimestre_id=data.get('trimestre_id'),
+                state_id=data.get('state_id')
+            )
+
+            db.session.add(nuevo_registro)
             db.session.commit()
-            return {"message": "Estados de registro de notas guardados exitosamente"}, 201
+            
+            return {"message": "Estado de registro de nota guardado exitosamente"}, 201
+            
         except SQLAlchemyError as e:
             db.session.rollback()
             return {"error": str(e)}, 400
 
+
     @staticmethod
     def get_nota_status(filters):
         """
-        Obtiene los estados de registro de notas según los filtros proporcionados
+        Obtiene los estados de registro de notas según los filtros proporcionados.
         """
         try:
             query = Evaluation.query.filter(Evaluation.indicator_id == 14)  # Filtrar solo por indicator_id 14
 
+            # Applying filters
             if filters.get('trimestre_id'):
                 query = query.filter(Evaluation.trimestre_id == filters['trimestre_id'])
             if filters.get('course_id'):
@@ -268,9 +269,20 @@ class StudentStatusService:
                 query = query.filter(Evaluation.teacher_id == filters['teacher_id'])
 
             registros = query.all()
-            
+
+            # Variables para cálculos generales
+            delivered_count = 0
+            not_delivered_count = 0
             result = []
+
+            # Procesar cada registro
             for registro in registros:
+                if registro.state_id == 1:  # Considerar '1' como entregado
+                    delivered_count += 1
+                else:
+                    not_delivered_count += 1
+                
+                # Append record data, using relationships to fetch names
                 result.append({
                     "id": registro.id,
                     "indicator_id": registro.indicator_id,
@@ -279,131 +291,123 @@ class StudentStatusService:
                     "period_id": registro.period_id,
                     "teacher_id": registro.teacher_id,
                     "state_id": registro.state_id,
-                    "state_name": registro.state.name if registro.state else None
+                    "state_name": registro.state.name if registro.state else None,
+                    "course_name": registro.course.name if registro.course else None,
+                    "teacher_name": f"{registro.teacher.name} {registro.teacher.last_name}" if registro.teacher else None
                 })
 
-            return {"registros": result}, 200
-        except SQLAlchemyError as e:
-            return {"error": str(e)}, 400
+            # General calculations
+            total_count = delivered_count + not_delivered_count
+            percentage_delivered = (delivered_count / total_count * 100) if total_count > 0 else 0
+            percentage_not_delivered = (not_delivered_count / total_count * 100) if total_count > 0 else 0
 
-    @staticmethod
-    def get_statistics(filters):
-        """
-        Obtiene estadísticas de los estados de registro de notas, considerando ciertos estados como entregados.
-        """
-        try:
-            # Define los estados que se considerarán como "entregados"
-            delivered_states = ['si', 'incompleto', 'retraso']
-            
-            # Construir la consulta
-            query = db.session.query(
-                Evaluation.trimestre_id,
-                Evaluation.period_id,  # Incluimos el periodo
-                db.func.sum(
-                    db.case(
-                        (Evaluation.state_id == 'si', 1),  # Contar como entregado
-                        (Evaluation.state_id == 'incompleto', 1),  # Contar como entregado
-                        (Evaluation.state_id == 'retraso', 1),  # Contar como entregado
-                        else_=0  # En caso contrario, contar como no entregado
-                    )
-                ).label('delivered_count'),  # Conteo de entregados
-                db.func.count(Evaluation.id).label('total_count')  # Conteo total
-            ).join(IndicatorState).filter(Evaluation.indicator_id == 14)  # Filtrar solo por indicator_id 14
-
-            # Filtrar por los parámetros proporcionados
-            if filters.get('trimestre_id'):
-                query = query.filter(Evaluation.trimestre_id == filters['trimestre_id'])
-            if filters.get('period_id'):
-                query = query.filter(Evaluation.period_id == filters['period_id'])
-
-            # Agrupar por trimestre y periodo
-            stats = query.group_by(Evaluation.trimestre_id, Evaluation.period_id).all()
-
-            # Estructura del resultado
-            result = {
-                "total_registros": sum(stat.total_count for stat in stats),
-                "por_trimestre": [
-                    {
-                        **({"trimestre_id": stat.trimestre_id} if stat.trimestre_id is not None else {}),
-                        **({"period_id": stat.period_id} if stat.period_id is not None else {}),
-                        "delivered_count": stat.delivered_count,
-                        "not_delivered_count": stat.total_count - stat.delivered_count,
-                        "percentage_delivered": round((stat.delivered_count * 100) / stat.total_count, 2) if stat.total_count > 0 else 0,
-                        "percentage_not_delivered": round(((stat.total_count - stat.delivered_count) * 100) / stat.total_count, 2) if stat.total_count > 0 else 0
-                    }
-                    for stat in stats
-                ]
+            # Formatear la respuesta final
+            formatted_response = {
+                "records": result,
+                "general": {
+                    "delivered_count": str(delivered_count),
+                    "not_delivered_count": str(not_delivered_count),
+                    "percentage_delivered": f"{percentage_delivered:.2f}",
+                    "percentage_not_delivered": f"{percentage_not_delivered:.2f}"
+                }
             }
 
-            return result, 200
+            return formatted_response, 200
+
         except SQLAlchemyError as e:
             return {"error": str(e)}, 400
+
         
     @staticmethod
     def register_communications(data):
-        communications = data.get("communications", [])
-        for communication in communications:
-            indicator_id = communication.get("indicator_id")
-            trimestre_id = communication.get("trimestre_id")
-            course_id = communication.get("course_id")
-            teacher_id = communication.get("teacher_id")
-            user_id = communication.get("user_id")
-            total_communications = communication.get("communication", 0)
-            
-            # Construcción dinámica de filtro, omitimos campos opcionales no definidos
-            filter_args = {
-                "indicator_id": indicator_id,
-                "trimestre_id": trimestre_id,
-                "course_id": course_id
-            }
-            if teacher_id:
-                filter_args["teacher_id"] = teacher_id
-            if user_id:
-                filter_args["user_id"] = user_id
+        """
+        Registra las comunicaciones de un único registro.
+        """
+        # Obtener el objeto de comunicación directamente
+        communication = data
 
-            # Consultar el reporte existente o crear uno nuevo
-            report = Report.query.filter_by(**filter_args).first()
-            
-            if report:
-                report.communication = total_communications
-            else:
-                report = Report(
-                    indicator_id=indicator_id,
-                    trimestre_id=trimestre_id,
-                    course_id=course_id,
-                    teacher_id=teacher_id,
-                    user_id=user_id,
-                    communication=total_communications
-                )
-                db.session.add(report)
+        # Extraer los valores
+        indicator_id = communication.get("indicator_id")
+        trimestre_id = communication.get("trimestre_id")
+        course_id = communication.get("course_id")
+        teacher_id = communication.get("teacher_id")
+        user_id = communication.get("user_id")
+        total_communications = communication.get("communication", 0)
 
+        # Construcción dinámica de filtro, omitimos campos opcionales no definidos
+        filter_args = {
+            "indicator_id": indicator_id,
+            "trimestre_id": trimestre_id,
+            "course_id": course_id
+        }
+        if teacher_id:
+            filter_args["teacher_id"] = teacher_id
+        if user_id:
+            filter_args["user_id"] = user_id
+
+        # Consultar el reporte existente o crear uno nuevo
+        report = Report.query.filter_by(**filter_args).first()
+        
+        if report:
+            report.communication = total_communications
+        else:
+            report = Report(
+                indicator_id=indicator_id,
+                trimestre_id=trimestre_id,
+                course_id=course_id,
+                teacher_id=teacher_id,
+                user_id=user_id,
+                communication=total_communications
+            )
+            db.session.add(report)
+
+        # Realiza el commit a la base de datos
         db.session.commit()
-        return {"message": "Comunicados registrados con éxito."}
+        return {"message": "Comunicación registrada con éxito."}
 
     # Consultar estadísticas de comunicados
     @staticmethod
     def get_communication_statistics(course_id=None, trimestre_id=None):
-        query = db.session.query(
-            Report.course_id,
-            Report.trimestre_id,
-            func.sum(Report.communication).label("total_communications"),
-            func.count(Report.id).label("total_records")
-        ).filter(Report.indicator_id == 15)
+        query = (
+            db.session.query(
+                Report.course_id,
+                Course.name.label("course_name"),  # Nombre del curso
+                Report.trimestre_id,
+                func.sum(Report.communication).label("total_communications"),
+                func.count(Report.id).label("total_records"),
+                Teacher.name.label("teacher_name"),  # Nombre del profesor
+                User.name.label("user_name")  # Nombre del usuario
+            )
+            .outerjoin(Course, Report.course_id == Course.id)
+            .outerjoin(Teacher, Report.teacher_id == Teacher.id)
+            .outerjoin(User, Report.user_id == User.id)
+            .filter(Report.indicator_id == 15)
+        )
 
         if course_id:
             query = query.filter(Report.course_id == course_id)
         if trimestre_id:
             query = query.filter(Report.trimestre_id == trimestre_id)
 
-        query = query.group_by(Report.course_id, Report.trimestre_id).all()
+        query = query.group_by(
+            Report.course_id, 
+            Course.name,
+            Report.trimestre_id,
+            Teacher.name,
+            User.name
+        ).all()
 
+        # Transformar los resultados
         statistics = []
         for data in query:
             statistics.append({
                 "course_id": data.course_id,
+                "course_name": data.course_name,
                 "trimestre_id": data.trimestre_id,
                 "total_communications": data.total_communications or 0,
-                "total_records": data.total_records
+                "total_records": data.total_records,
+                "teacher_name": data.teacher_name,
+                "user_name": data.user_name
             })
 
         return statistics

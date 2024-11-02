@@ -22,8 +22,6 @@ class Period(db.Model):
     trimester_id = Column(Integer, ForeignKey('trimesters.id')) 
     trimester = relationship('Trimester', back_populates='periods')
     
-    # Cambié 'Registroota' por 'RegistroNota'
-    indicators = relationship('Indicator', back_populates='period')
  
 
 

@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from app.service.teacher_service import register_teacher, assign_teacher_to_coordinator, get_all_teachers, get_teacher_by_id, update_teacher, delete_teacher
+from app.service.teacher_service import register_teacher, assign_teacher_to_coordinator, get_all_teachers, get_teacher_by_id, update_teacher, delete_teacher, get_teacher_count
 
 teacher_bp = Blueprint('teacher_bp', __name__)
 
@@ -120,6 +120,11 @@ def delete_teacher_route(teacher_id):
         return jsonify({'error': str(e)}), 404
     except Exception as e:
         return jsonify({'error': 'Ocurrió un error al eliminar el profesor'}), 500
+
+@teacher_bp.route('/teacher/count', methods=['GET'])
+def count_users():
+    teacher_count = get_teacher_count()
+    return jsonify({'total_teacher': teacher_count}) 
 
     
  

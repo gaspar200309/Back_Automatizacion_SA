@@ -210,10 +210,9 @@ def create_indicator6_evaluation_service(data):
         teacher_id = data.get('teacher_id')
         course_id = data.get('course_id')
         period_id = data.get('period_id')
-        parallel = data.get('parallel')
         percentage = data.get('percentage')
 
-        if not all([teacher_id, course_id, period_id, parallel, percentage]):
+        if not all([teacher_id, course_id, period_id, percentage]):
             return {'error': 'Todos los campos son requeridos', 'status': 400}
 
         teacher = Teacher.query.get(teacher_id)
@@ -227,7 +226,6 @@ def create_indicator6_evaluation_service(data):
             teacher_id=teacher_id,
             course_id=course_id,
             period_id=period_id,
-            parallel=parallel,
             indicator_id=6, 
             porcentage=percentage 
         )
@@ -242,24 +240,22 @@ def create_indicator6_evaluation_service(data):
         return {'error': 'Error de integridad en la base de datos', 'status': 500}
     
 def get_estadistic_indicator6(indicator_id):
-    # Obtener todas las evaluaciones relacionadas al indicador
+    # Obtener todas las evaluaciones relacionadas al indicador, junto con las relaciones necesarias
     evaluations = Evaluation.query.options(
         joinedload(Evaluation.teacher),
         joinedload(Evaluation.course),
         joinedload(Evaluation.period),
     ).filter(Evaluation.indicator_id == indicator_id).all()
 
-    # Lista para acumular porcentajes por curso y profesor
+    # Lista para almacenar estadísticas por profesor y curso
     stats = []
 
     for evaluation in evaluations:
-        # Manejo de valores nulos
         teacher_name = f"{evaluation.teacher.name} {evaluation.teacher.last_name}" if evaluation.teacher else "Desconocido"
         course_name = evaluation.course.name if evaluation.course else "Desconocido"
-        paralelo = evaluation.parallel if evaluation.parallel else "Desconocido"
         period_name = evaluation.period.name if evaluation.period else "Desconocido"
 
-        # Busca si el profesor ya está en la lista
+        # Buscar si el profesor ya tiene una entrada
         teacher_entry = next((item for item in stats if item['teacher_name'] == teacher_name), None)
 
         if not teacher_entry:
@@ -269,42 +265,30 @@ def get_estadistic_indicator6(indicator_id):
             }
             stats.append(teacher_entry)
 
-        # Busca si el curso ya está en los cursos del profesor
+        # Buscar si el curso ya está en la lista de cursos del profesor
         course_entry = teacher_entry['courses'].get(course_name, {
-            'num_periodos': 0,
-            'paralelos': {},
-            'promedio_periodo': {},
-            'promedio_total': 0
+            'periods': {},
+            'average': 0,
+            'total_periods': 0
         })
 
-        # Almacenar el porcentaje del avance por periodo y paralelo
-        if paralelo not in course_entry['paralelos']:
-            course_entry['paralelos'][paralelo] = {}
+        # Añadir el porcentaje de avance para el periodo actual
+        course_entry['periods'][period_name] = evaluation.porcentage
 
-        course_entry['paralelos'][paralelo][period_name] = evaluation.porcentage
-
-        # Actualizar la entrada del curso
+        # Actualizar la entrada del curso en la lista del profesor
         teacher_entry['courses'][course_name] = course_entry
 
-    # Calcular promedios por periodo y total
+    # Calcular promedios por curso
     for teacher_entry in stats:
         for course_name, data in teacher_entry['courses'].items():
-            total_sum = 0
-            total_count = 0
-            for paralelo, periodos in data['paralelos'].items():
-                for periodo, porcentaje in periodos.items():
-                    if periodo not in data['promedio_periodo']:
-                        data['promedio_periodo'][periodo] = 0
-                    data['promedio_periodo'][periodo] += porcentaje
-                    total_sum += porcentaje
-                    total_count += 1
-
-            # Calcular promedio total por curso
-            if total_count > 0:
-                data['promedio_total'] = total_sum / total_count
-                data['num_periodos'] = total_count  # Almacena el número de periodos utilizados
+            total_sum = sum(data['periods'].values())
+            period_count = len(data['periods'])
+            if period_count > 0:
+                data['average'] = total_sum / period_count
+                data['total_periods'] = period_count
 
     return stats
+
 
 def create_new_evaluation_with_period(indicator_id, teacher_id, period_id, state_id):
     teacher = Teacher.query.get(teacher_id)

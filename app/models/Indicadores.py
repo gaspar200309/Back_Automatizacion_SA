@@ -1,8 +1,26 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Boolean, DateTime,Enum
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+import enum
 from app.models.user import user_indicator
 from .. import db
+
+class PeriodType(enum.Enum):
+    ANUAL = "Anual"
+    SEMESTRAL = "Semestral"
+    TRIMESTRAL = "Trimestral"
+    MENSUAL = "Mensual"
+    PERSONALIZADO = "Personalizado"
+
+class DeliveryDeadline(db.Model):
+    __tablename__ = 'delivery_deadlines'
+    id = Column(Integer, primary_key=True)
+    delivery_date = Column(Date, nullable=False)
+    period_type = Column(Enum(PeriodType), nullable=False)  # Tipo de periodicidad
+    indicator_id = Column(Integer, ForeignKey('indicators.id'), nullable=False)
+
+    indicator = relationship('Indicator', back_populates='deadlines')
+
 
 class Formula(db.Model):
     __tablename__ = 'formulas'
@@ -16,25 +34,21 @@ class Indicator(db.Model):
     __tablename__ = 'indicators'
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
-    delivery_deadline = Column(Date, nullable=True) #  fecha límite de entrega
-    due_date = Column(Date, nullable=False)  #Fecha de vencimiento¿
     improvement_action = Column(String(250)) # Mejora accion
     expected_result = Column(String(50), nullable=False) # resultado esperado
     is_completed = Column(Boolean, default=False)
     academic_objective_id = Column(Integer, ForeignKey('academic_objectives.id'))
     formula_id = db.Column(db.Integer, db.ForeignKey('formulas.id'), nullable=False)
     sgc_objective_id = Column(Integer, ForeignKey('sgc_objectives.id'))
+    
+    deadlines = relationship('DeliveryDeadline', back_populates='indicator', cascade='all, delete-orphan')
     evaluations = relationship('Evaluation', back_populates='indicator', cascade='all, delete-orphan')
     users = relationship('User', secondary=user_indicator, back_populates='indicators')
-    period_id = Column(Integer, ForeignKey('periods.id')) 
-
     academic_objective = relationship('AcademicObjective', back_populates='indicators')
     sgc_objective = relationship('SGCObjective', back_populates='indicators')
     formula = relationship('Formula', back_populates='indicators')
     evaluations = relationship('Evaluation', back_populates='indicator', cascade='all, delete-orphan')
-    users = relationship('User', secondary=user_indicator, back_populates='indicators')
     documents = relationship('Document', back_populates='indicator')
-    period = relationship('Period', back_populates='indicators')
     reports = relationship('Report', back_populates='indicator')
     student_status = relationship('StudentStatus', back_populates='indicator', uselist=False)
 
@@ -54,7 +68,6 @@ class Evaluation(db.Model):
     period_id = Column(Integer, ForeignKey('periods.id'), nullable=True) 
     trimestre_id = Column(Integer, ForeignKey('trimesters.id'), nullable  = True)
     course_id = Column(Integer, ForeignKey('courses.id'), nullable=True) 
-    parallel = Column(String(10), nullable=True)      
     
     indicator = relationship('Indicator', back_populates='evaluations')
     teacher = relationship('Teacher') 

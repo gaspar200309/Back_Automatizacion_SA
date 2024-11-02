@@ -5,7 +5,7 @@ from app.service.compliance_service import get_evaluations_by_indicator, get_eva
 
 compliance_bp = Blueprint('compliance_bp', __name__)
 
-@compliance_bp.route('/evaluations', methods=['POST'])
+@compliance_bp.route('/evaluations/indicator2', methods=['POST'])
 def create_evaluation_route():
     data = request.json
     try:
@@ -14,12 +14,12 @@ def create_evaluation_route():
             data['teacher_id'],
             data['state_id']
         )
-        return jsonify({'message': 'Evaluation created successfully', 'id': evaluation.id}), 201
+        return jsonify({'success': True, 'message': 'Evaluation created successfully', 'id': evaluation.id}), 201
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
-    
-    
+        return jsonify({'success': False, 'error': str(e)}), 400
 
+    
+    
 @compliance_bp.route('/evaluations/<int:indicator_id>', methods=['GET'])
 def get_evaluations(indicator_id):
     evaluations = get_evaluations_by_indicator(indicator_id)

@@ -10,16 +10,21 @@ def register_teacher(name, last_name, asignatura, course_ids):
         asignatura=asignatura
     )
     
+    # Añadir el profesor a la sesión antes de asociarle los cursos
+    db.session.add(new_teacher)
+    
+    # Asignar cursos al profesor
     for course_id in course_ids:
         course = db.session.query(Course).filter_by(id=course_id).first()
         if course is None:
             raise ValueError(f"El curso con id {course_id} no existe")
         new_teacher.courses.append(course)
     
-    db.session.add(new_teacher)
+    # Guardar cambios en la base de datos
     db.session.commit()
 
     return new_teacher
+
 
 
 def assign_teacher_to_coordinator(teacher_id, coordinator_id):
@@ -106,3 +111,6 @@ def delete_teacher(teacher_id):
     
     db.session.delete(teacher)
     db.session.commit()
+    
+def get_teacher_count():
+    return Teacher.query.count()

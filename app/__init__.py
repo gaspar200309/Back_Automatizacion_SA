@@ -29,7 +29,7 @@ def create_app():
 
     with app.app_context():
         from app.models.user import User, Permission, UserRole, Role, Teacher, CoordinatorTeacherAssignment
-        from app.models.Indicadores import Indicator, IndicatorState, Evaluation, Formula, StudentStatus
+        from app.models.Indicadores import Indicator, IndicatorState, Evaluation, Formula, StudentStatus, DeliveryDeadline
         from app.models.peridos import Trimester, Period, Document
         from app.models.ObjAcademico import AcademicObjective, SGCObjective
         from app.models.coures import Course, Nivel
@@ -43,6 +43,7 @@ def create_app():
         from app.controllers.document_controller import documents_bp
         from app.controllers.compliance_controller import compliance_bp
         from app.controllers.efectivizar_controller import student_status_bp
+        from app.controllers.statictic_controller import summary_bp
         
         app.register_blueprint(auth_bp, url_prefix='/auth')
         app.register_blueprint(teacher_bp, url_prefix='/api')
@@ -53,6 +54,7 @@ def create_app():
         app.register_blueprint(documents_bp, url_prefix='/api')
         app.register_blueprint(compliance_bp, url_prefix='/api')
         app.register_blueprint(student_status_bp, url_prefix='/api')
+        app.register_blueprint(summary_bp, url_prefix='/api')
                 
         db.create_all()
         init_roles(app)

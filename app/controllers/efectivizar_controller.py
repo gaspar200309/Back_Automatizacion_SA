@@ -100,12 +100,15 @@ def get_incidences_statistics():
 
 @student_status_bp.route('/registro-nota', methods=['POST'])
 def register_nota_status():
-    """
-    Endpoint para registrar estados de notas
-    """
+
     data = request.get_json()
-    if not data or 'registros' not in data:
+    if not data:
         return jsonify({"error": "Datos inválidos"}), 400
+
+    required_fields = ['indicator_id', 'course_id', 'teacher_id', 'state_id']
+    for field in required_fields:
+        if field not in data:
+            return jsonify({"error": f"El campo {field} es requerido"}), 400
 
     response, status_code = StudentStatusService.register_nota_status(data)
     return jsonify(response), status_code
@@ -148,6 +151,7 @@ def get_statistics():
 @student_status_bp.route('/register-communication', methods=['POST'])
 def register_communication():
     data = request.get_json()
+    print(data)
     required_fields = ["indicator_id", "trimestre_id", "course_id", "communication"]
 
     # Revisar solo los campos estrictamente necesarios
@@ -158,7 +162,6 @@ def register_communication():
     response = StudentStatusService.register_communications(data)
     return jsonify(response), 201
 
-# Obtener estadísticas de comunicados
 @student_status_bp.route('/communication-statistics', methods=['GET'])
 def get_communication_statistics():
     course_id = request.args.get('course_id', type=int)
