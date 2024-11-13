@@ -81,11 +81,14 @@ class StudentStatus(db.Model):
     __tablename__ = 'student_status'
     id = Column(Integer, primary_key=True)
     indicator_id = Column(Integer, ForeignKey('indicators.id'), nullable=False)
+    trimestre_id = Column(Integer, ForeignKey('trimesters.id'), nullable  = True)
     active_students = Column(Integer, default=0, nullable=False)
     inactive_students  = Column(Integer, default=0, nullable=False)
     registered_at = Column(DateTime, default=func.now()) 
 
     indicator = relationship('Indicator', back_populates='student_status')
+    trimestre = relationship('Trimester') 
+    
 
 class Report(db.Model):
     __tablename__ = 'report'

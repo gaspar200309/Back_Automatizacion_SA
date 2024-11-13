@@ -61,13 +61,12 @@ def get_evaluation_statistics(indicator_id):
     }
 
 
-
+#Indicador 2
 def get_all_evaluations_with_details(indicator_id):
     evaluations = Evaluation.query.options(
         joinedload(Evaluation.teacher),
         joinedload(Evaluation.state),
         joinedload(Evaluation.indicator)
-        
     ).filter(Evaluation.indicator_id == indicator_id).all()
 
     evaluation_data = [{
@@ -85,9 +84,23 @@ def get_all_evaluations_with_details(indicator_id):
         }
     } for e in evaluations]
 
+    # Contamos las ocurrencias de cada estado
+    state_counts = {
+        'Sí': 0,
+        'No': 0,
+        'Retraso': 0,
+        'No corresponde': 0,
+        'Incompleto': 0
+    }
+
+    for e in evaluations:
+        state_name = e.state.name
+        if state_name in state_counts:
+            state_counts[state_name] += 1
+
     total_count = len(evaluations)
-    delivered_count = sum(1 for e in evaluations if e.state.name in ['Sí', 'Retraso', 'Incompleto'])
-    not_delivered_count = total_count - delivered_count
+    delivered_count = state_counts['Sí'] + state_counts['Retraso'] + state_counts['Incompleto']
+    not_delivered_count = state_counts['No'] + state_counts['No corresponde']
 
     delivered_percentage = (delivered_count / total_count * 100) if total_count > 0 else 0
     not_delivered_percentage = (not_delivered_count / total_count * 100) if total_count > 0 else 0
@@ -97,10 +110,12 @@ def get_all_evaluations_with_details(indicator_id):
         'delivered_count': delivered_count,
         'not_delivered_count': not_delivered_count,
         'delivered_percentage': round(delivered_percentage, 2),
-        'not_delivered_percentage': round(not_delivered_percentage, 2)
+        'not_delivered_percentage': round(not_delivered_percentage, 2),
+        'state_counts': state_counts  # Añadimos los conteos de cada estado
     }
 
     return evaluation_data, statistics
+
 
 
 def create_new_evaluation_with_trimester(indicator_id, teacher_id, trimestre_id, state_id):

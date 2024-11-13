@@ -3,45 +3,31 @@ from app.service.efectivizar_service import StudentStatusService
 
 student_status_bp = Blueprint('student_status_bp', __name__)
 
-@student_status_bp.route('/student-status', methods=['POST'])
-def create_or_update_student_status():
+@student_status_bp.route('/register_active_students', methods=['POST'])
+def register_active_students():
     data = request.get_json()
+    trimestre_id = data.get('trimestre_id')
+    active_students_count = data.get('active_students')
 
-    # Obtener datos del cuerpo de la solicitud
-    indicator_id = data.get('indicator_id')
-    active_students = data.get('active_students')
-    inactive_students = data.get('inactive_students')
+    if not trimestre_id or active_students_count is None:
+        return jsonify({"error": "Trimestre ID y cantidad de estudiantes activos son requeridos"}), 400
 
-    if not indicator_id or active_students is None or inactive_students is None:
-        return jsonify({"message": "Faltan datos necesarios"}), 400
+    # Llama al servicio para registrar estudiantes activos
+    result = StudentStatusService.register_active_students(trimestre_id, active_students_count)
+    return jsonify(result), 201
 
-    # Llamar al servicio para crear o actualizar el estado de los estudiantes
-    student_status = StudentStatusService.create_or_update_student_status(
-        indicator_id=indicator_id,
-        active_students=active_students,
-        inactive_students=inactive_students
-    )
+@student_status_bp.route('/get_student_status/<int:trimestre_id>', methods=['GET'])
+def get_student_status(trimestre_id):
+    result = StudentStatusService.get_student_status(trimestre_id)
+    if not result:
+        return jsonify({"error": "No se encontró el estado para el trimestre especificado"}), 404
 
-    return jsonify({
-        "message": "Estado de estudiantes registrado/actualizado exitosamente",
-        "indicator_id": student_status.indicator_id,
-        "active_students": student_status.active_students,
-        "inactive_students": student_status.inactive_students
-    }), 200
+    return jsonify(result), 200
 
-# Ruta para obtener el estado de los estudiantes por indicador
-@student_status_bp.route('/student-status/<int:indicator_id>', methods=['GET'])
-def get_student_status(indicator_id):
-    student_status = StudentStatusService.get_student_status(indicator_id)
-
-    if not student_status:
-        return jsonify({"message": "No se encontró el estado de estudiantes para este indicador"}), 404
-
-    return jsonify({
-        "indicator_id": student_status.indicator_id,
-        "active_students": student_status.active_students,
-        "inactive_students": student_status.inactive_students
-    }), 200
+@student_status_bp.route('/get_all_student_statuses', methods=['GET'])
+def get_all_student_statuses():
+    result = StudentStatusService.get_all_student_statuses()
+    return jsonify(result), 200
 
 
 @student_status_bp.route('/register-license', methods=['POST'])

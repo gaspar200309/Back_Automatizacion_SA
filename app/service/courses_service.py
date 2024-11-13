@@ -1,5 +1,6 @@
 from sqlalchemy.exc import SQLAlchemyError
 from app.models.coures import Nivel, Course
+from app.models.user import Teacher
 from app import db
 
 def get_all_courses():
@@ -15,3 +16,16 @@ def get_all_courses():
         db.session.rollback()  
         print(f"Error: {e}")
         return []
+
+def get_courses_by_teacher_id(teacher_id):
+    try:
+        teacher = db.session.query(Teacher).filter_by(id=teacher_id).first()
+        if not teacher:
+            return None, "Teacher not found"
+        
+        # Retrieve courses associated with the teacher
+        courses = teacher.courses  # SQLAlchemy relationship is already defined on Teacher model
+        
+        return courses, None
+    except Exception as e:
+        return None, str(e)

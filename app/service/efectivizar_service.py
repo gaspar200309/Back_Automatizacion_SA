@@ -7,31 +7,69 @@ from sqlalchemy import func
 
 class StudentStatusService:
 
-    @staticmethod
-    def create_or_update_student_status(indicator_id, active_students, inactive_students):
-        student_status = StudentStatus.query.filter_by(indicator_id=indicator_id).first()
+    TOTAL_STUDENTS = 1060 
 
-        if not student_status:
-            student_status = StudentStatus(
-                indicator_id=indicator_id,
-                active_students=active_students,
-                inactive_students=inactive_students
-            )
-            db.session.add(student_status)
-        else:
-            # Si ya existe, actualizar los valores
-            student_status.active_students = active_students
-            student_status.inactive_students = inactive_students
+    @staticmethod
+    def register_active_students(trimestre_id, active_students_count):
+        inactive_students_count = StudentStatusService.TOTAL_STUDENTS - active_students_count
         
-        # Guardar los cambios
+        active_percentage = (active_students_count / StudentStatusService.TOTAL_STUDENTS) * 100
+        inactive_percentage = (inactive_students_count / StudentStatusService.TOTAL_STUDENTS) * 100
+
+        student_status = StudentStatus(
+            indicator_id=10, 
+            trimestre_id=trimestre_id,
+            active_students=active_students_count,
+            inactive_students=inactive_students_count
+        )
+
+        db.session.add(student_status)
         db.session.commit()
-        return student_status
+
+        return {
+            "trimestre_id": trimestre_id,
+            "active_students": active_students_count,
+            "inactive_students": inactive_students_count,
+            "active_percentage": active_percentage,
+            "inactive_percentage": inactive_percentage
+        }
 
     @staticmethod
-    def get_student_status(indicator_id):
-        # Buscar el estado de estudiantes para un indicador específico
-        return StudentStatus.query.filter_by(indicator_id=indicator_id).first()
-    
+    def get_student_status(trimestre_id):
+        student_status = StudentStatus.query.filter_by(trimestre_id=trimestre_id).first()
+        if not student_status:
+            return None
+
+        active_percentage = (student_status.active_students / StudentStatusService.TOTAL_STUDENTS) * 100
+        inactive_percentage = (student_status.inactive_students / StudentStatusService.TOTAL_STUDENTS) * 100
+
+        return {
+            "trimestre_id": trimestre_id,
+            "active_students": student_status.active_students,
+            "inactive_students": student_status.inactive_students,
+            "active_percentage": active_percentage,
+            "inactive_percentage": inactive_percentage
+        }
+        
+    @staticmethod
+    def get_all_student_statuses():
+        statuses = StudentStatus.query.all()
+        
+        results = []
+        for status in statuses:
+            active_percentage = (status.active_students / StudentStatusService.TOTAL_STUDENTS) * 100
+            inactive_percentage = (status.inactive_students / StudentStatusService.TOTAL_STUDENTS) * 100
+
+            results.append({
+                "trimestre_id": status.trimestre_id,
+                "active_students": status.active_students,
+                "inactive_students": status.inactive_students,
+                "active_percentage": active_percentage,
+                "inactive_percentage": inactive_percentage
+            })
+        
+        return results
+
     @staticmethod
     def register_licenses(indicator_id, trimestre_id, course_id, licencia):
         try:
