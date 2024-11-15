@@ -5,7 +5,7 @@ from app.models.peridos import Trimester, Period
 from app.models.user import Teacher
 from app.models.coures import Course
 
-
+#Indicador 2
 def create_new_evaluation(indicator_id, teacher_id, state_id):
     try:
         indicator = Indicator.query.get(indicator_id)
