@@ -5,14 +5,14 @@ services:
     image: mysql:8.0
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: armando1gaspar  # Cambia esto a tu contraseña deseada
-      MYSQL_DATABASE: san_agustin          # Nombre de la base de datos que deseas crear
-      MYSQL_USER: gaspar                   # Nombre de usuario
-      MYSQL_PASSWORD: armando1gaspar       # Contraseña para el usuario
+      MYSQL_ROOT_PASSWORD: armando1gaspar 
+      MYSQL_DATABASE: san_agustin         
+      MYSQL_USER: gaspar                  
+      MYSQL_PASSWORD: armando1gaspar      
     ports:
-      - "3307:3306"                        # Mapea el puerto 3306 del contenedor al host
+      - "3307:3306"                       
     volumes:
-      - mysql_data:/var/lib/mysql          # Persistir datos de MySQL
+      - mysql_data:/var/lib/mysql         
 
 volumes:
   mysql_data:
