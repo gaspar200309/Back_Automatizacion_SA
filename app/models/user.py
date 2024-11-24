@@ -82,5 +82,6 @@ class CoordinatorTeacherAssignment(db.Model):
     id = Column(Integer, primary_key=True)
     teacher_id = Column(Integer, ForeignKey('teacher.id', ondelete='CASCADE'))  
     coordinator_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'))
+    
     teacher = relationship('Teacher', back_populates='assignments')
     coordinator = relationship('User', back_populates='coordinator_assignments')

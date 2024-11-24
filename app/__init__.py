@@ -23,9 +23,10 @@ def create_app():
     db.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)
-
-    CORS(app, resources={r"/*": {"origins": config.CORS_ORIGINS}}, supports_credentials=True)
     
+    origins = config.CORS_ORIGINS.split(",") if "," in config.CORS_ORIGINS else [config.CORS_ORIGINS]
+    CORS(app, resources={r"/*": {"origins": origins}}, supports_credentials=True)
+
 
     with app.app_context():
         from app.models.user import User, Permission, UserRole, Role, Teacher, CoordinatorTeacherAssignment

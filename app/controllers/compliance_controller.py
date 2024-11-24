@@ -1,6 +1,6 @@
 
 from flask import Blueprint, request, jsonify
-from app.service.compliance_service import get_evaluations_by_indicator, get_evaluation_statistics, create_new_evaluation, get_all_evaluations_with_details, create_new_evaluation_with_trimester, get_all_with_details_indicator4, create_indicator6_evaluation_service, get_estadistic_indicator6, create_new_evaluation_with_period, get_all_with_details_indicator7, create_indicator8_period, get_all_with_details_indicator8
+from app.service.compliance_service import get_evaluations_by_indicator, get_evaluation_statistics, create_new_evaluation, get_all_evaluations_with_details, create_new_evaluation_with_trimester, get_all_with_details_indicator4, create_indicator6_evaluation_service, get_estadistic_indicator6, create_new_evaluation_with_period, get_all_with_details_indicator7, create_indicator8_period, get_all_with_details_indicator8, get_statistics_by_trimester_and_indicator, get_estadistic_indicator6_by_period
 
 
 compliance_bp = Blueprint('compliance_bp', __name__)
@@ -65,6 +65,14 @@ def get_all_evaluations_indicator4(indicator_id):
         'statistics': statistics
     })
     
+@compliance_bp.route('/evaluations/indicator4/<int:indicator_id>/<int:trimestre_id>', methods=['GET'])
+def get_evaluations_by_trimester(indicator_id, trimestre_id):
+    statistics = get_statistics_by_trimester_and_indicator(indicator_id, trimestre_id)
+    return jsonify({
+        'statistics': statistics
+    })
+
+    
 @compliance_bp.route('/create_indicator6', methods=['POST'])
 def create_indicator6_evaluation():
     data = request.get_json()
@@ -84,6 +92,14 @@ def get_indicator6_stats(indicator_id):
     try:
         stats = get_estadistic_indicator6(indicator_id)
         return jsonify(stats), 200 
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+@compliance_bp.route('/evaluations/indicator6/<int:indicator_id>/<int:period_id>', methods=['GET'])
+def get_indicator6_stats2(indicator_id, period_id):
+    try:
+        stats = get_estadistic_indicator6_by_period(indicator_id, period_id)
+        return jsonify({'statistics': stats}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     

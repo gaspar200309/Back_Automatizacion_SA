@@ -144,7 +144,7 @@ def create_new_evaluation_with_trimester(indicator_id, teacher_id, trimestre_id,
     return new_evaluation
 
 
-
+#"Indicator 4" Obtiene todos los datos del indicador 4
 def get_all_with_details_indicator4(indicator_id):
     evaluations = Evaluation.query.options(
         joinedload(Evaluation.teacher),
@@ -219,6 +219,33 @@ def get_all_with_details_indicator4(indicator_id):
         'overall_statistics': overall_statistics
     }
     
+#Obtiene las estadisticas del indicador 4
+def get_statistics_by_trimester_and_indicator(indicator_id, trimestre_id):
+    evaluations = Evaluation.query.options(
+        joinedload(Evaluation.teacher),
+        joinedload(Evaluation.state),
+        joinedload(Evaluation.indicator),
+        joinedload(Evaluation.trimestre)
+    ).filter(
+        Evaluation.indicator_id == indicator_id,
+        Evaluation.trimestre_id == trimestre_id
+    ).all()
+
+    delivered_count = sum(1 for e in evaluations if e.state.name in ['Sí', 'Retraso', 'Incompleto'])
+    not_delivered_count = len(evaluations) - delivered_count
+
+    # Conteo por estado
+    state_counts = {}
+    for e in evaluations:
+        state_name = e.state.name.strip()
+        state_counts[state_name] = state_counts.get(state_name, 0) + 1
+
+    return {
+        'delivered_count': delivered_count,
+        'not_delivered_count': not_delivered_count,
+        'state_counts': state_counts
+    }
+
 
 def create_indicator6_evaluation_service(data):
     try:
@@ -301,6 +328,32 @@ def get_estadistic_indicator6(indicator_id):
             if period_count > 0:
                 data['average'] = total_sum / period_count
                 data['total_periods'] = period_count
+
+    return stats
+# indicador 6 por periodo 
+def get_estadistic_indicator6_by_period(indicator_id, period_id):
+    # Obtener todas las evaluaciones relacionadas al indicador y periodo
+    evaluations = Evaluation.query.options(
+        joinedload(Evaluation.teacher),
+        joinedload(Evaluation.course),
+        joinedload(Evaluation.period),
+    ).filter(
+        Evaluation.indicator_id == indicator_id,
+        Evaluation.period_id == period_id  # Filtramos también por el periodo
+    ).all()
+
+    # Lista para almacenar las estadísticas
+    stats = []
+
+    for evaluation in evaluations:
+        course_name = evaluation.course.name if evaluation.course else "Desconocido"
+        percentage = evaluation.porcentage  # Este es el porcentaje de avance
+
+        # Agregar la estadística al listado
+        stats.append({
+            'course_name': course_name,
+            'percentage': percentage
+        })
 
     return stats
 
