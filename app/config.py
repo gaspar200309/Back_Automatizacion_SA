@@ -19,3 +19,11 @@ class Config:
     CORS_ORIGINS = os.getenv('CORS_ORIGINS', '*')
 
 config = Config()
+
+class DevelopmentConfig(Config):
+    DEBUG = True
+    ENV = 'development'
+
+class ProductionConfig(Config):
+    DEBUG = False
+    ENV = 'production'

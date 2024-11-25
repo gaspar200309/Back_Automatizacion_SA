@@ -1,6 +1,8 @@
 from app import db
 from app.models.coures import Course
 from app.models.user import Teacher, User, CoordinatorTeacherAssignment
+from sqlalchemy.orm import joinedload
+
 
 def register_teacher(name, last_name, asignatura, course_ids):
     # Crear un nuevo profesor
@@ -9,21 +11,25 @@ def register_teacher(name, last_name, asignatura, course_ids):
         last_name=last_name,
         asignatura=asignatura
     )
-    
+
     # Añadir el profesor a la sesión antes de asociarle los cursos
     db.session.add(new_teacher)
+
+    # Recuperar todos los cursos en una sola consulta
+    courses = db.session.query(Course).filter(Course.id.in_(course_ids)).all()
     
-    # Asignar cursos al profesor
-    for course_id in course_ids:
-        course = db.session.query(Course).filter_by(id=course_id).first()
-        if course is None:
-            raise ValueError(f"El curso con id {course_id} no existe")
-        new_teacher.courses.append(course)
-    
+    if len(courses) != len(course_ids):
+        missing_ids = set(course_ids) - {course.id for course in courses}
+        raise ValueError(f"Los cursos con IDs {missing_ids} no existen")
+
+    # Asignar los cursos al profesor
+    new_teacher.courses.extend(courses)
+
     # Guardar cambios en la base de datos
     db.session.commit()
 
     return new_teacher
+
 
 
 
@@ -37,24 +43,30 @@ def assign_teacher_to_coordinator(teacher_id, coordinator_id):
     db.session.commit()
     return assignment
 
+
 def get_all_teachers():
-    teachers = db.session.query(Teacher).all()
-    
-    teacher_list = []
-    for teacher in teachers:
-        teacher_data = {
+    teachers = db.session.query(Teacher).options(
+        joinedload(Teacher.courses).joinedload(Course.nivel)
+    ).all()
+
+    teacher_list = [
+        {
             'id': teacher.id,
             'name': teacher.name,
             'last_name': teacher.last_name,
             'asignatura': teacher.asignatura,
-            'courses': [{
-                'course_id': course.id,
-                'course_name': course.name,
-                'nivel': course.nivel.name  # Relación con nivel
-            } for course in teacher.courses]  # Obtener todos los cursos asociados al profesor
+            'courses': [
+                {
+                    'course_id': course.id,
+                    'course_name': course.name,
+                    'nivel': course.nivel.name
+                } for course in teacher.courses
+            ]
         }
-        teacher_list.append(teacher_data)
+        for teacher in teachers
+    ]
     return teacher_list
+
 
 def get_teacher_by_id(teacher_id):
     teacher = Teacher.query.get(teacher_id)

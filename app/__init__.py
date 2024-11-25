@@ -4,12 +4,12 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from flask_migrate import Migrate
 from .config import config
-from .utils.init_curse import init_courses
-from .utils.init_roles import init_roles
-from .utils.init_Objetivos import init_objectives
-from .utils.init_formulas import init_formulas
-from .utils.init_status import init_status
-from .utils.init_trimestre import init_trimesters_and_periods
+#from .utils.init_curse import init_courses
+#from .utils.init_roles import init_roles
+#from .utils.init_Objetivos import init_objectives
+#from .utils.init_formulas import init_formulas
+#from .utils.init_status import init_status
+#from .utils.init_trimestre import init_trimesters_and_periods
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -58,12 +58,12 @@ def create_app():
         app.register_blueprint(summary_bp, url_prefix='/api')
                 
         db.create_all()
-        init_roles(app)
-        init_courses(app)
-        init_objectives(app)
-        init_formulas(app)
-        init_status(app)
-        init_trimesters_and_periods(app)
+        #init_roles(app)
+        #init_courses(app)
+        #init_objectives(app)
+        #init_formulas(app)
+        #init_status(app)
+        #init_trimesters_and_periods(app)
         #init_nivel(app)
 
     return app

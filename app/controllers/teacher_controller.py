@@ -72,12 +72,10 @@ def get_teacherb(teacher_id):
 @teacher_bp.route('/teachers/<int:teacher_id>', methods=['PUT'])
 def update_teacher_route(teacher_id):
     data = request.get_json()
-    
     required_fields = {'firstName': 'nombre', 'lastName': 'apellido', 
                       'subjects': 'asignatura', 'course_ids': 'cursos'}
     missing_fields = [required_fields[field] for field in required_fields 
                      if not data.get(field)]
-    
     if missing_fields:
         return jsonify({
             'error': f'Faltan datos necesarios: {", ".join(missing_fields)}'
