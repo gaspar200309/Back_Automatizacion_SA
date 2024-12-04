@@ -248,114 +248,159 @@ def get_statistics_by_trimester_and_indicator(indicator_id, trimestre_id):
 
 
 def create_indicator6_evaluation_service(data):
+    from sqlalchemy.exc import IntegrityError
+
     try:
-        teacher_id = data.get('teacher_id')
-        course_id = data.get('course_id')
-        period_id = data.get('period_id')
-        percentage = data.get('percentage')
+        # Validación inicial
+        if not all(isinstance(item, dict) for item in data):
+            return {'error': 'Datos inválidos: cada registro debe ser un objeto', 'status': 400}
 
-        if not all([teacher_id, course_id, period_id, percentage]):
-            return {'error': 'Todos los campos son requeridos', 'status': 400}
+        # Extraer IDs únicos para validación en bloque
+        teacher_ids = {item.get('teacher_id') for item in data if 'teacher_id' in item}
+        course_ids = {item.get('course_id') for item in data if 'course_id' in item}
+        period_ids = {item.get('period_id') for item in data if 'period_id' in item}
 
-        teacher = Teacher.query.get(teacher_id)
-        course = Course.query.get(course_id)
-        period = Period.query.get(period_id)
+        # Verificar existencia de IDs en la base de datos
+        teachers = {t.id for t in Teacher.query.filter(Teacher.id.in_(teacher_ids)).all()}
+        courses = {c.id for c in Course.query.filter(Course.id.in_(course_ids)).all()}
+        periods = {p.id for p in Period.query.filter(Period.id.in_(period_ids)).all()}
 
-        if not teacher or not course or not period:
-            return {'error': 'Datos no válidos para profesor, curso o período', 'status': 404}
+        # Preparar evaluaciones
+        evaluations = []
+        for item in data:
+            teacher_id = item.get('teacher_id')
+            course_id = item.get('course_id')
+            period_id = item.get('period_id')
+            percentage = item.get('percentage')
 
-        evaluation = Evaluation(
-            teacher_id=teacher_id,
-            course_id=course_id,
-            period_id=period_id,
-            indicator_id=6, 
-            porcentage=percentage 
-        )
+            # Validar campos requeridos
+            if not all([teacher_id, course_id, period_id, percentage]):
+                return {'error': 'Faltan datos requeridos', 'status': 400}
 
-        db.session.add(evaluation)
+            # Validar existencia en base de datos
+            if teacher_id not in teachers or course_id not in courses or period_id not in periods:
+                return {'error': f'Datos inválidos: {item}', 'status': 404}
+
+            # Crear evaluación
+            evaluation = Evaluation(
+                teacher_id=teacher_id,
+                course_id=course_id,
+                period_id=period_id,
+                indicator_id=6,
+                porcentage=percentage
+            )
+            evaluations.append(evaluation)
+
+        # Guardar evaluaciones en una sola transacción
+        db.session.add_all(evaluations)
         db.session.commit()
 
-        return {'message': 'Evaluación creada exitosamente', 'status': 201}
+        return {'message': 'Evaluaciones creadas exitosamente', 'status': 201}
 
-    except IntegrityError:
+    except IntegrityError as e:
         db.session.rollback()
-        return {'error': 'Error de integridad en la base de datos', 'status': 500}
+        return {'error': f'Error de integridad: {str(e)}', 'status': 500}
+    except Exception as e:
+        db.session.rollback()
+        return {'error': f'Error inesperado: {str(e)}', 'status': 500}
+
     
 def get_estadistic_indicator6(indicator_id):
-    # Obtener todas las evaluaciones relacionadas al indicador, junto con las relaciones necesarias
-    evaluations = Evaluation.query.options(
-        joinedload(Evaluation.teacher),
-        joinedload(Evaluation.course),
-        joinedload(Evaluation.period),
-    ).filter(Evaluation.indicator_id == indicator_id).all()
+    # Obtener todas las evaluaciones relacionadas al indicador con carga diferida
+    evaluations = (
+        Evaluation.query.options(
+            joinedload(Evaluation.teacher),
+            joinedload(Evaluation.period),
+        )
+        .filter(Evaluation.indicator_id == indicator_id)
+        .all()
+    )
 
-    # Lista para almacenar estadísticas por profesor y curso
-    stats = []
+    stats = {}
+    total_percentage_all = 0  # Para calcular el total de totales
+    total_count_all = 0      # Para calcular el total de evaluaciones
 
     for evaluation in evaluations:
         teacher_name = f"{evaluation.teacher.name} {evaluation.teacher.last_name}" if evaluation.teacher else "Desconocido"
-        course_name = evaluation.course.name if evaluation.course else "Desconocido"
-        period_name = evaluation.period.name if evaluation.period else "Desconocido"
+        period_id = evaluation.period.id if evaluation.period else "Desconocido"
 
-        # Buscar si el profesor ya tiene una entrada
-        teacher_entry = next((item for item in stats if item['teacher_name'] == teacher_name), None)
-
-        if not teacher_entry:
-            teacher_entry = {
-                'teacher_name': teacher_name,
-                'courses': {}
+        if teacher_name not in stats:
+            stats[teacher_name] = {
+                "teacher_name": teacher_name,
+                "periods": {},
+                "total_percentage": 0,
+                "total_count": 0,
             }
-            stats.append(teacher_entry)
 
-        # Buscar si el curso ya está en la lista de cursos del profesor
-        course_entry = teacher_entry['courses'].get(course_name, {
-            'periods': {},
-            'average': 0,
-            'total_periods': 0
-        })
+        if period_id not in stats[teacher_name]["periods"]:
+            stats[teacher_name]["periods"][period_id] = {
+                "total_percentage": 0,
+                "evaluation_count": 0,
+            }
 
-        # Añadir el porcentaje de avance para el periodo actual
-        course_entry['periods'][period_name] = evaluation.porcentage
+        # Actualizar estadísticas por periodo y profesor
+        stats[teacher_name]["periods"][period_id]["total_percentage"] += evaluation.porcentage
+        stats[teacher_name]["periods"][period_id]["evaluation_count"] += 1
+        stats[teacher_name]["total_percentage"] += evaluation.porcentage
+        stats[teacher_name]["total_count"] += 1
 
-        # Actualizar la entrada del curso en la lista del profesor
-        teacher_entry['courses'][course_name] = course_entry
+        # Acumular totales globales
+        total_percentage_all += evaluation.porcentage
+        total_count_all += 1
 
-    # Calcular promedios por curso
-    for teacher_entry in stats:
-        for course_name, data in teacher_entry['courses'].items():
-            total_sum = sum(data['periods'].values())
-            period_count = len(data['periods'])
-            if period_count > 0:
-                data['average'] = total_sum / period_count
-                data['total_periods'] = period_count
+    # Calcular promedios por profesor y periodo
+    results = []
+    for teacher_name, data in stats.items():
+        teacher_data = {
+            "teacher_name": teacher_name,
+            "periods": {},
+            "overall_average": round(
+                data["total_percentage"] / data["total_count"], 2
+            ) if data["total_count"] > 0 else 0,
+        }
 
-    return stats
-# indicador 6 por periodo 
+        for period_id, period_data in data["periods"].items():
+            teacher_data["periods"][period_id] = round(
+                period_data["total_percentage"] / period_data["evaluation_count"], 2
+            ) if period_data["evaluation_count"] > 0 else 0
+
+        results.append(teacher_data)
+
+    # Calcular promedio general
+    overall_average_all = (
+        round(total_percentage_all / total_count_all, 2) if total_count_all > 0 else 0
+    )
+
+    # Agregar total de totales y promedio general
+    summary = {
+        "total_percentage_all": total_percentage_all,
+        "total_count_all": total_count_all,
+        "overall_average_all": overall_average_all,
+    }
+
+    return {"results": results, "summary": summary}
+
+
+
+
+
 def get_estadistic_indicator6_by_period(indicator_id, period_id):
-    # Obtener todas las evaluaciones relacionadas al indicador y periodo
-    evaluations = Evaluation.query.options(
-        joinedload(Evaluation.teacher),
-        joinedload(Evaluation.course),
-        joinedload(Evaluation.period),
-    ).filter(
-        Evaluation.indicator_id == indicator_id,
-        Evaluation.period_id == period_id  # Filtramos también por el periodo
-    ).all()
+    try:
+        stats = db.session.query(
+            Evaluation.course_id,
+            Course.name.label('course_name'),
+            Evaluation.porcentage.label('percentage')
+        ).join(Course, Evaluation.course_id == Course.id).filter(
+            Evaluation.indicator_id == indicator_id,
+            Evaluation.period_id == period_id
+        ).all()
 
-    # Lista para almacenar las estadísticas
-    stats = []
-
-    for evaluation in evaluations:
-        course_name = evaluation.course.name if evaluation.course else "Desconocido"
-        percentage = evaluation.porcentage  # Este es el porcentaje de avance
-
-        # Agregar la estadística al listado
-        stats.append({
-            'course_name': course_name,
-            'percentage': percentage
-        })
-
-    return stats
+        print(f"Generated stats: {stats}")
+        return [{'course_name': stat.course_name, 'percentage': stat.percentage} for stat in stats]
+    except Exception as e:
+        import traceback
+        print("Error en get_estadistic_indicator6_by_period:", traceback.format_exc())
+        raise Exception(f"Error al obtener estadísticas: {str(e)}")
 
 
 def create_new_evaluation_with_period(indicator_id, teacher_id, period_id, state_id):

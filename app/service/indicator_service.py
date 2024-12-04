@@ -1,4 +1,5 @@
 from app.models.Indicadores import Indicator, Evaluation, IndicatorState, DeliveryDeadline, PeriodType
+from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from app.models.user import User, Teacher
 from app import db
@@ -6,55 +7,72 @@ from app import db
 class IndicatorService:
     @staticmethod
     def create_indicator(data):
+        """
+        Crea un indicador y sus plazos de entrega. 
+        Optimizado para reducir transacciones innecesarias.
+        """
         print("Datos recibidos para crear el indicador:", data)
         try:
+            # Crear el indicador
             indicator = Indicator(
                 name=data.get('name'),
                 improvement_action=data.get('improvement_action'),
                 expected_result=data.get('expected_result'),
-                academic_objective_id=int(data.get('academic_objective_id')),
-                sgc_objective_id=int(data.get('sgc_objective_id')),
-                formula_id=int(data.get('formula_id'))
+                academic_objective_id=data.get('academic_objective_id'),
+                sgc_objective_id=data.get('sgc_objective_id'),
+                formula_id=data.get('formula_id'),
             )
             db.session.add(indicator)
 
-            # Procesa los plazos de entrega (deadlines)
+            # Crear los plazos de entrega
             deadlines_data = data.get('deadlines', [])
-            for deadline_data in deadlines_data:
-                deadline = DeliveryDeadline(
-                    delivery_date=deadline_data.get('delivery_date'),
-                    period_type=PeriodType(deadline_data.get('period_type')),
+            deadlines = [
+                DeliveryDeadline(
+                    delivery_date=dl.get('delivery_date'),
+                    period_type=PeriodType(dl.get('period_type')),
                     indicator=indicator
-                )
-                db.session.add(deadline)
+                ) for dl in deadlines_data
+            ]
+            db.session.add_all(deadlines)
 
             db.session.commit()
 
+            # Respuesta formateada
             return {
                 'id': indicator.id,
                 'name': indicator.name,
-                'deadlines': [{'delivery_date': d.delivery_date, 'period_type': d.period_type.value} for d in indicator.deadlines]
+                'deadlines': [{'delivery_date': d.delivery_date, 'period_type': d.period_type.value} for d in deadlines]
             }
         except Exception as e:
             db.session.rollback()
             raise Exception(f"Error al crear el indicador: {str(e)}")
 
     @staticmethod
-    def get_all_indicators():
+    def get_all_indicators(limit=None, offset=None):
         try:
-            indicators = db.session.query(Indicator).all()
-            return indicators
+            query = db.session.query(Indicator.id, Indicator.name)
+            if limit is not None and offset is not None:
+                query = query.limit(limit).offset(offset)
+            indicators = query.all()
+            return [{'id': ind.id, 'name': ind.name} for ind in indicators]
         except Exception as e:
             raise Exception(f"Error retrieving indicators: {str(e)}")
     
     @staticmethod
     def assign_coordinator(indicator_id, user_id):
+        """
+        Asigna un coordinador a un indicador.
+        """
         try:
-            indicator = db.session.query(Indicator).filter_by(id=indicator_id).first()
-            user = db.session.query(User).filter_by(id=user_id).first()
+            indicator = db.session.query(Indicator).get(indicator_id)
+            user = db.session.query(User).get(user_id)
 
             if not indicator or not user:
-                raise Exception("El indicador o el usuario no existe")
+                raise ValueError("El indicador o el usuario no existe")
+
+            # Validar si ya está asignado
+            if user in indicator.users:
+                raise ValueError("El usuario ya es coordinador de este indicador")
 
             indicator.users.append(user)
             db.session.commit()
@@ -62,15 +80,21 @@ class IndicatorService:
         except Exception as e:
             db.session.rollback()
             raise Exception(f"Error al asignar coordinador: {str(e)}")
-    
+
     @staticmethod
     def remove_coordinator(indicator_id, user_id):
+        """
+        Desasigna un coordinador de un indicador.
+        """
         try:
-            indicator = db.session.query(Indicator).filter_by(id=indicator_id).first()
-            user = db.session.query(User).filter_by(id=user_id).first()
+            indicator = db.session.query(Indicator).get(indicator_id)
+            user = db.session.query(User).get(user_id)
 
             if not indicator or not user:
-                raise Exception("El indicador o el usuario no existe")
+                raise ValueError("El indicador o el usuario no existe")
+
+            if user not in indicator.users:
+                raise ValueError("El usuario no está asignado como coordinador")
 
             indicator.users.remove(user)
             db.session.commit()
@@ -81,115 +105,119 @@ class IndicatorService:
 
     @staticmethod
     def count_indicators():
-        total = db.session.query(func.count(Indicator.id)).scalar()
-        completed = db.session.query(func.count(Indicator.id)).filter(Indicator.is_completed == True).scalar()
-        incomplete = total - completed
+        """
+        Cuenta los indicadores y clasifica su estado.
+        """
+        try:
+            total = db.session.query(func.count(Indicator.id)).scalar()
+            completed = db.session.query(func.count(Indicator.id)).filter(Indicator.is_completed == True).scalar()
+            incomplete = total - completed
 
-        return {
-            'total': total,
-            'completed': completed,
-            'incomplete': incomplete,
-        }
+            return {'total': total, 'completed': completed, 'incomplete': incomplete}
+        except Exception as e:
+            raise Exception(f"Error counting indicators: {str(e)}")
 
     @staticmethod
     def get_indicators_by_username(username):
+        """
+        Recupera indicadores asociados a un usuario.
+        """
         try:
-            user = db.session.query(User).filter_by(username=username).first()
+            user = db.session.query(User).options(joinedload(User.indicators)).filter_by(username=username).first()
 
             if not user:
-                raise Exception("Usuario no encontrado")
+                raise ValueError("Usuario no encontrado")
 
-            indicators = user.indicators 
-
-            result = []
-            for indicator in indicators:
-                result.append({
-                    'id': indicator.id,
-                    'name': indicator.name,
-                    'improvement_action': indicator.improvement_action,
-                    'expected_result': indicator.expected_result,
-                    'is_completed': indicator.is_completed,
-                    'academic_objective': indicator.academic_objective.name if indicator.academic_objective else None,
-                    'sgc_objective': indicator.sgc_objective.name if indicator.sgc_objective else None,
-                    'formula': indicator.formula.formula if indicator.formula else None
-                })
-
-            return result
+            return [{
+                'id': ind.id,
+                'name': ind.name,
+                'is_completed': ind.is_completed,
+                'improvement_action': ind.improvement_action,
+                'expected_result': ind.expected_result,
+                'academic_objective': ind.academic_objective.name if ind.academic_objective else None,
+                'sgc_objective': ind.sgc_objective.name if ind.sgc_objective else None,
+                'formula': ind.formula.formula if ind.formula else None
+            } for ind in user.indicators]
         except Exception as e:
             raise Exception(f"Error retrieving indicators for user: {str(e)}")
 
     @staticmethod
-    def get_indicator_assignments():
-        try:
-            indicators = db.session.query(Indicator).all()
-            return [{
-                'id': indicator.id,
-                'name': indicator.name,
-                'coordinators': [{
-                    'id': user.id,
-                    'username': user.username
-                } for user in indicator.users]
-            } for indicator in indicators]
-        except Exception as e:
-            raise Exception(f"Error retrieving indicator assignments: {str(e)}")
-
-    @staticmethod
     def register_compliance(indicator_id, teacher_name, state_name):
+        """
+        Registra el cumplimiento de un indicador para un profesor y estado dado.
+        """
         try:
             indicator = Indicator.query.get(indicator_id)
             if not indicator:
-                raise Exception("Indicador no encontrado")
+                raise ValueError("Indicador no encontrado")
 
             name, last_name = teacher_name.split(' ', 1)
             teacher = Teacher.query.filter_by(name=name, last_name=last_name).first()
             if not teacher:
-                raise Exception("Profesor no encontrado")
+                raise ValueError("Profesor no encontrado")
 
             state = IndicatorState.query.filter_by(name=state_name).first()
             if not state:
-                raise Exception("Estado no encontrado")
+                raise ValueError("Estado no encontrado")
 
             compliance = Evaluation.query.filter_by(indicator_id=indicator.id, teacher_id=teacher.id).first()
             if compliance:
-                compliance.state_id = state.id 
+                compliance.state_id = state.id
             else:
                 compliance = Evaluation(indicator_id=indicator.id, teacher_id=teacher.id, state_id=state.id)
                 db.session.add(compliance)
 
             db.session.commit()
-            return compliance
+            return {'message': 'Cumplimiento registrado correctamente'}
         except Exception as e:
             db.session.rollback()
-            raise e
-
-    @staticmethod
-    def get_compliance(indicator_id):
-        return Evaluation.query.filter_by(indicator_id=indicator_id).all()
+            raise Exception(f"Error al registrar cumplimiento: {str(e)}")
 
     @staticmethod
     def get_indicator_deadlines_service():
         try:
-            indicators = Indicator.query.all()
-            result = []
-            for indicator in indicators:
-                for deadline in indicator.deadlines:
-                    # Obtiene el usuario asignado
-                    assigned_users = [
-                        {
-                            'name': user.name,
-                            'photo': user.photo
-                        }
-                        for user in indicator.users
-                    ]
+            indicators = db.session.query(Indicator).options(
+                joinedload(Indicator.users).load_only(User.name, User.photo)
+            ).all()
 
-                    result.append({
-                        'id': indicator.id,
-                        'name': indicator.name,
-                        'is_completed': indicator.is_completed,
-                        'delivery_date': deadline.delivery_date,
-                        'assigned_user': assigned_users
-                    })
+            result = [{
+                'id': indicator.id,
+                'name': indicator.name,
+                'is_completed': indicator.is_completed,
+                'deadlines': [{
+                    'delivery_date': deadline.delivery_date,
+                    'period_type': deadline.period_type.value
+                } for deadline in indicator.deadlines],
+                'assigned_user': [{'name': user.name, 'photo': user.photo} for user in indicator.users]
+            } for indicator in indicators]
+
             return result
         except Exception as e:
             print(f"Error al obtener fechas de entrega: {str(e)}")
             raise e
+
+    @staticmethod
+    def get_assigned_users_by_indicator(indicator_id):
+        """
+        Obtiene los usuarios asignados a un indicador específico.
+        """
+        try:
+            # Buscar el indicador por ID y cargar los usuarios asignados
+            indicator = db.session.query(Indicator).options(
+                joinedload(Indicator.users).load_only(User.id, User.name, User.last_name, User.photo)
+            ).filter_by(id=indicator_id).first()
+
+            if not indicator:
+                raise ValueError("Indicador no encontrado")
+
+            # Formatear los datos de los usuarios
+            assigned_users = [{
+                'id': user.id,
+                'name': f"{user.name} {user.last_name}",
+                'photo': user.photo
+            } for user in indicator.users]
+
+            return assigned_users
+        except Exception as e:
+            print(f"Error al obtener usuarios asignados al indicador: {str(e)}")
+            raise Exception(f"Error al obtener usuarios asignados: {str(e)}")

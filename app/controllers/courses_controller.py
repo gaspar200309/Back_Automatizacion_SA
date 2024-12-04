@@ -16,7 +16,6 @@ def get_courses_by_teacher(teacher_id):
     if error:
         return jsonify({"error": error}), 404
 
-    # Format the courses data as JSON
     courses_data = [
         {
             "id": course.id,

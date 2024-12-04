@@ -77,14 +77,15 @@ def get_evaluations_by_trimester(indicator_id, trimestre_id):
 def create_indicator6_evaluation():
     data = request.get_json()
     print(data)
-    if not data:
-        return jsonify({'error': 'No se enviaron datos', 'status': 400}), 400
-    result = create_indicator6_evaluation_service(data)
+    if not data or not isinstance(data, list):
+        return jsonify({'error': 'Se requiere un arreglo de datos', 'status': 400}), 400
 
-    if result['status'] == 201:
-        return jsonify(result), 201
-    else:
+    try:
+        result = create_indicator6_evaluation_service(data)
         return jsonify(result), result['status']
+    except Exception as e:
+        return jsonify({'error': str(e), 'status': 500}), 500
+
    
 
 @compliance_bp.route('/evaluations/indicator6/<int:indicator_id>', methods=['GET'])
@@ -98,10 +99,18 @@ def get_indicator6_stats(indicator_id):
 @compliance_bp.route('/evaluations/indicator6/<int:indicator_id>/<int:period_id>', methods=['GET'])
 def get_indicator6_stats2(indicator_id, period_id):
     try:
+        if not isinstance(indicator_id, int) or not isinstance(period_id, int):
+            return jsonify({"error": "Parámetros inválidos"}), 400
+
         stats = get_estadistic_indicator6_by_period(indicator_id, period_id)
+
+        if not stats:
+            return jsonify({"message": "No se encontraron datos"}), 404
+
         return jsonify({'statistics': stats}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Error interno del servidor: {str(e)}"}), 500
+
     
 @compliance_bp.route('/evaluations/indicator7', methods=['POST'])
 def create_evaluation_with_period_route():

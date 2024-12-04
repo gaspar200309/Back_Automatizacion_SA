@@ -5,7 +5,8 @@ from app.middleware.middleware import role_required, jwt_required
 indicator_bp = Blueprint('indicators', __name__)
 
 @indicator_bp.route('/indicators', methods=['POST'])
-#@role_required(['Administrador'])
+@jwt_required()  
+@role_required(['Administrador'])
 def create_indicator():
     data = request.json
     print("Datos recibidos en el POST /indicators:", data)
@@ -18,28 +19,22 @@ def create_indicator():
 
 @indicator_bp.route('/indicators', methods=['GET'])
 #@jwt_required()  
-#@role_required(['Administrador', 'director'])
+#@role_required(['Administrador'])
 def get_indicators():
     try:
         indicators = IndicatorService.get_all_indicators()
-        result = [{
-            'id': indicator.id,
-            'name': indicator.name,
-            'improvement_action': indicator.improvement_action,
-            'expected_result': indicator.expected_result,
-            'academic_objective': indicator.academic_objective.name if indicator.academic_objective else None,
-            'sgc_objective': indicator.sgc_objective.name if indicator.sgc_objective else None,
-            'formula': indicator.formula.formula if indicator.formula else None
-        } for indicator in indicators]
-        return jsonify(result), 200
+        return jsonify(indicators), 200  # Evitar reprocesar datos
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @indicator_bp.route('/indicators/<int:indicator_id>/assign-coordinator', methods=['POST'])
+@jwt_required()
+@role_required(['Administrador'])
 def assign_coordinator(indicator_id):
     try:
         data = request.json
-        print(f"Datos recibidos en POST /indicators/{indicator_id}/assign-coordinator:", data)
+        print(f"Datos recibidos en POST /indicators/{indicator_id}/assign-coordinator", data)
         user_id = data.get('userId')
 
         if not user_id:
@@ -51,6 +46,8 @@ def assign_coordinator(indicator_id):
         return jsonify({'error': str(e)}), 500
 
 @indicator_bp.route('/indicators/<int:indicator_id>/remove-coordinator', methods=['DELETE'])
+@jwt_required()
+@role_required(['Administrador'])
 def remove_coordinator(indicator_id):
     try:
         data = request.json
@@ -66,23 +63,21 @@ def remove_coordinator(indicator_id):
         return jsonify({'error': str(e)}), 500
 
 @indicator_bp.route('/indicators/simple', methods=['GET'])
+@jwt_required()
+@role_required(['Administrador', 'director', 'coordinador'])
 def get_indicators_with_coordinators():
     try:
-        indicators = IndicatorService.get_all_indicators()
-        result = [{
-            'id': indicator.id,
-            'name': indicator.name,
-            'coordinators': [{
-                'id': user.id,
-                'username': user.username,
-                'name': user.name
-            } for user in indicator.users]
-        } for indicator in indicators]
-        return jsonify(result), 200
+        limit = request.args.get('limit', type=int)
+        offset = request.args.get('offset', type=int)
+        indicators = IndicatorService.get_all_indicators(limit=limit, offset=offset)
+        return jsonify(indicators), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @indicator_bp.route('/indicators/count', methods=['GET'])
+@jwt_required()
+@role_required(['Administrador', 'director', 'coordinador'])
 def get_indicator_counts():
     try:
         counts = IndicatorService.count_indicators()
@@ -91,14 +86,20 @@ def get_indicator_counts():
         return jsonify({'error': str(e)}), 500
 
 @indicator_bp.route('/indicators/user/<string:username>', methods=['GET'])
+@jwt_required()
+@role_required(['Administrador', 'director', 'coordinador'])
 def get_indicators_by_user(username):
     try:
         indicators = IndicatorService.get_indicators_by_username(username)
+        if not indicators:
+            return jsonify({'message': 'No indicators found for user'}), 404
         return jsonify(indicators), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 @indicator_bp.route('/indicators/assignments', methods=['GET'])
+@jwt_required()
 def get_all_assignments():
     try:
         assignments = IndicatorService.get_indicator_assignments()
@@ -107,9 +108,20 @@ def get_all_assignments():
         return jsonify({'error': str(e)}), 500
 
 @indicator_bp.route('/indicators/deadlines', methods=['GET'])
+@jwt_required()
+@role_required(['Administrador'])
 def get_indicator_deadlines():
     try:
         deadlines = IndicatorService.get_indicator_deadlines_service()
         return jsonify(deadlines), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+@indicator_bp.route('/indicators/<int:indicator_id>/users', methods=['GET'])
+def get_assigned_users(indicator_id):
+    try:
+        users = IndicatorService.get_assigned_users_by_indicator(indicator_id)
+        return jsonify(users), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+

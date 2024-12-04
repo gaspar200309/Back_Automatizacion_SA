@@ -1,30 +1,42 @@
 from flask import Blueprint, request, jsonify
 from app.service.auth_service import create_user, authenticate_user
-from flask_jwt_extended import create_access_token, set_access_cookies
-
+from flask_jwt_extended import create_access_token
 
 auth_bp = Blueprint('auth', __name__)
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
     try:
-        data = request.form
+        data = request.json if request.is_json else request.form
+        print("Datos recibidos en POST /register:", data)
+
+        # Validar campos requeridos
+        required_fields = ['username', 'name', 'last_name', 'email', 'password', 'role']
+        missing_fields = [field for field in required_fields if not data.get(field)]
+        if missing_fields:
+            return jsonify({"error": f"Faltan los campos requeridos: {', '.join(missing_fields)}"}), 400
+
+        # Extraer datos
         username = data.get('username')
         name = data.get('name')
         last_name = data.get('last_name')
         email = data.get('email')
         password = data.get('password')
         role_id = data.get('role')
-        phone = data.get('phone')
-        photo = request.files.get('photo') 
+        phone = data.get('phone', None)
+        photo = request.files.get('photo', None)
 
+        # Crear usuario
         user, message = create_user(username, name, last_name, email, password, role_id, phone, photo)
         if user:
             return jsonify({"message": message}), 201
+
         return jsonify({"error": message}), 400
+
     except Exception as e:
-        print(f"Error in register route: {str(e)}")
-        return jsonify({"error": "An unexpected error occurred"}), 500
+        import traceback
+        print("Error en /register:", traceback.format_exc())
+        return jsonify({"error": "Error inesperado en el servidor."}), 500
 
     
 @auth_bp.route('/login', methods=['POST'])
